@@ -28,7 +28,7 @@
 %% Local Functions
 %%
 -export([
-		 loop/1,
+		 loop/0,
 		 rpc/1,
 		 handle/3,
 		 handle/4,
@@ -41,8 +41,9 @@ start() ->
 	start([]).
 
 start(Params) ->
-	Pid = spawn_link(?MODULE, loop, [Params]),
+	Pid = spawn_link(?MODULE, loop, []),
 	register(?SERVER, Pid),
+	Pid ! {params, Params},
 	{ok, Pid}.
 
 
@@ -90,8 +91,11 @@ rpc(Q) ->
 	end.
 
 
-loop(Params) ->
+loop() ->
 	receive
+		{params, Params} ->
+			process_params(Params);
+		
 		stop ->
 			exit(ok);
 		
@@ -105,7 +109,7 @@ loop(Params) ->
 			handle(From, unsubscribe, Bus)
 
 	end,
-	loop(Params).
+	loop().
 
 
 
@@ -118,14 +122,14 @@ handle(From, subscribe, Bus) ->
 
 
 handle(From, unsubscribe, Bus) ->
-	Subscribers=getvar({subscribers, Bus}, []),
+	Subscribers=getsubs(Bus),
 	Filtered=Subscribers -- From,
 	put({subscribers, Bus}, Filtered),
 	ok.
 	
 
 handle(From, publish, Bus, Message) ->
-	Subscribers=getvar({subscribers, Bus}, []),
+	Subscribers=getsubs(Bus),
 	send(From, Subscribers, Message).
 
 
@@ -149,6 +153,36 @@ sendto(From, To, Message) ->
 	end.
 
 
+%% @private
+process_params(Params) ->
+	put(params, Params),
+	ok.
+
+
+%% @private
+tern(Var, Value, True, False) ->
+	case Var of
+		Value -> True;
+		_     -> False
+	end.
+
+
+ltern(List, Var, Value, True, False) ->
+	ok.	
+
+
+%% @private
+isdebug() ->
+	getvar(debug, false).
+
+
+
+%% @private
+getsubs(Bus) ->
+	getvar({subscribers, Bus}, []).
+
+
+
 %% @spec getvar(VarName, Default) -> Value | Default
 %% Value = atom() | string() | integer() | float()
 getvar(VarName, Default) ->
@@ -161,3 +195,4 @@ getvar(VarName, undefined, Default) ->
 
 getvar(_VarName, VarValue, _Default) ->
 	VarValue.
+
