@@ -32,7 +32,8 @@
 		 rpc/1,
 		 handle/3,
 		 handle/4,
-		 send/3
+		 send/3,
+		 reply/2
 		 ]).
 %%
 %% API Functions
@@ -53,6 +54,7 @@ stop() ->
 
 
 %% @spec publish(Bus, Message) -> ok | {error, Reason}
+%% Reason = rpcerror
 %%
 publish(Bus, Message) ->
 	rpc({publish, Bus, Message}).
@@ -120,13 +122,15 @@ loop() ->
 %%
 %% @private
 handle(From, subscribe, Bus) ->
-	mng:add_sub(Bus, From);
+	mng:add_sub(Bus, From),
+	reply(From, ok);
 
 %% API - UN-SUBSCRIBE
 %%
 %% @private
 handle(From, unsubscribe, Bus) ->
-	mng:rem_sub(Bus, From).
+	mng:rem_sub(Bus, From),
+	reply(From, ok).
 
 %% API - PUBLISH
 %%
@@ -149,20 +153,28 @@ dosend(_From, [], _Message) ->
 	no_more_subs;
 
 dosend(From, [Current|Rest], Message) ->
-	sendto(From, Current, Message),
+	_Ret=sendto(From, Current, Message),
 	dosend(From, Rest, Message).
 
 
 sendto(From, To, Message) ->
-	Result = To ! {From, Message},
-	case Result of
+	try To ! {From, Message} of
 		{From, Message} ->
 			ok;
 		_ ->
 			mng:delete_sub(To),
-			error
+			{removed_sub, To}
+	catch 
+		_:_ ->
+			mng:delete_sub(To),
+			{removed_sub, To}
 	end.
 
 
+
+
+%% @private
+reply(To, Message) ->
+	?SERVER ! {reply, Message}.
 
 
