@@ -32,7 +32,8 @@
 		 rpc/1,
 		 handle/3,
 		 handle/4,
-		 send/3
+		 send/3,
+		 isdebug/0
 		 ]).
 %%
 %% API Functions
@@ -94,7 +95,7 @@ rpc(Q) ->
 loop() ->
 	receive
 		{params, Params} ->
-			process_params(Params);
+			put(params, Params);
 		
 		stop ->
 			exit(ok);
@@ -139,7 +140,7 @@ send(_From, [], _Message) ->
 
 send(From, Subscribers, Message) ->
 	[Current|Rest] = Subscribers,
-	Result = sendto(From, Current, Message),
+	sendto(From, Current, Message),
 	send(From, Rest, Message).
 
 
@@ -152,11 +153,6 @@ sendto(From, To, Message) ->
 			error
 	end.
 
-
-%% @private
-process_params(Params) ->
-	put(params, Params),
-	ok.
 
 
 %% @private
@@ -173,7 +169,10 @@ ltern(List, Var, Value, True, False) ->
 
 %% @private
 isdebug() ->
-	getvar(debug, false).
+	Params=getvar(params, []),
+	lists:member("debug", Params)
+	or
+	lists:member(debug, Params).
 
 
 
