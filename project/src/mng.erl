@@ -20,8 +20,7 @@
 		 delete_sub/1,
 		 remove_sub_from_busses/2,
 		 clean_bus_table/0,
-		 clean_busses/1,
-		 reply/2
+		 clean_busses/1
 		 ]).
 
 -export([
@@ -129,16 +128,6 @@ clean_bus(Bus, []) ->
 clean_bus(_Bus, _) ->
 	ok.
 
-
-
-%% @private
-reply(undefined, Message) ->
-	io:format("~p:reply(~p)~n", [?MODULE, Message]),
-	Message;
-
-%% @private
-reply({From, Context}, Message) ->
-	From ! {Context, Message}.
 
 
 
