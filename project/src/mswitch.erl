@@ -13,8 +13,8 @@
 %% Exported Functions
 %%
 -export([
-		 start/0,
-		 start/1,
+		 start_link/0,
+		 start_link/1,
 		 stop/0
 		 ]).
 
@@ -32,16 +32,15 @@
 		 rpc/1,
 		 handle/3,
 		 handle/4,
-		 send/3,
-		 isdebug/0
+		 send/3
 		 ]).
 %%
 %% API Functions
 %%
-start() ->
-	start([]).
+start_link() ->
+	start_link([]).
 
-start(Params) ->
+start_link(Params) ->
 	Pid = spawn_link(?MODULE, loop, []),
 	register(?SERVER, Pid),
 	Pid ! {params, Params},
@@ -61,11 +60,15 @@ publish(Bus, Message) ->
 %% @spec subscribe(Bus) -> ok | {error, Reason}
 %%
 subscribe(Bus) ->
+	%% keep a local context
+	mng:add_sub(Bus, self()), 
 	rpc({subscribe, Bus}).
 
 %% @spec unsubscribe(Bus) -> ok | {error, Reason}
 %%
 unsubscribe(Bus) ->
+	%% keep a local context
+	mng:rem_sub(Bus, self()),
 	rpc({unsubscribe, Bus}).
 
 
@@ -113,35 +116,41 @@ loop() ->
 	loop().
 
 
-
+%% API - SUBSCRIBE
+%%
+%% @private
 handle(From, subscribe, Bus) ->
-	Subscribers=getvar({subscribers, Bus}, []),
-	Filtered=Subscribers -- From,
-	NewList=Filtered ++ From,
-	put({subscribers, Bus}, NewList),
-	ok;
+	mng:add_sub(Bus, From);
 
-
+%% API - UN-SUBSCRIBE
+%%
+%% @private
 handle(From, unsubscribe, Bus) ->
-	Subscribers=getsubs(Bus),
-	Filtered=Subscribers -- From,
-	put({subscribers, Bus}, Filtered),
-	ok.
-	
+	mng:rem_sub(Bus, From).
 
+%% API - PUBLISH
+%%
+%% @private
 handle(From, publish, Bus, Message) ->
-	Subscribers=getsubs(Bus),
+	Subscribers=mng:getsubs(Bus),
 	send(From, Subscribers, Message).
 
 
 
-send(_From, [], _Message) ->
-	ok;
 
-send(From, Subscribers, Message) ->
-	[Current|Rest] = Subscribers,
+
+
+
+send(_From, [], _Message) -> no_subs;
+send(From, Subs, Message) -> dosend(From, Subs, Message).
+
+
+dosend(_From, [], _Message) ->
+	no_more_subs;
+
+dosend(From, [Current|Rest], Message) ->
 	sendto(From, Current, Message),
-	send(From, Rest, Message).
+	dosend(From, Rest, Message).
 
 
 sendto(From, To, Message) ->
@@ -150,48 +159,10 @@ sendto(From, To, Message) ->
 		{From, Message} ->
 			ok;
 		_ ->
+			mng:delete_sub(To),
 			error
 	end.
 
 
 
-%% @private
-tern(Var, Value, True, False) ->
-	case Var of
-		Value -> True;
-		_     -> False
-	end.
-
-
-ltern(List, Var, Value, True, False) ->
-	ok.	
-
-
-%% @private
-isdebug() ->
-	Params=getvar(params, []),
-	lists:member("debug", Params)
-	or
-	lists:member(debug, Params).
-
-
-
-%% @private
-getsubs(Bus) ->
-	getvar({subscribers, Bus}, []).
-
-
-
-%% @spec getvar(VarName, Default) -> Value | Default
-%% Value = atom() | string() | integer() | float()
-getvar(VarName, Default) ->
-	VarValue=get(VarName),
-	getvar(VarName, VarValue, Default).
-
-getvar(VarName, undefined, Default) ->
-	put(VarName, Default),
-	Default;
-
-getvar(_VarName, VarValue, _Default) ->
-	VarValue.
 
