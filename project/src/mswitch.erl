@@ -21,8 +21,8 @@
 -export([
 		 status/0,
 		 publish/2,
-		 subscribe/1,
-		 unsubscribe/1,
+		 subscribe/2,
+		 unsubscribe/2,
 		 getsubs/0
 		 ]).
 
@@ -41,6 +41,9 @@
 %%
 start_link() ->
 	start_link([]).
+
+start_link(debug) ->
+	start_link([debug]);
 
 start_link(Params) ->
 	Pid = spawn_link(?MODULE, loop, []),
@@ -65,17 +68,22 @@ status() ->
 publish(Bus, Message) ->
 	rpc({publish, Bus, Message}).
 
-%% @spec subscribe(Bus) -> {ServerPid, ok} | {error, Reason}
+%% @spec subscribe(MailBox, Bus) -> {ServerPid, ok} | {error, Reason}
+%%
+%% MailBox = {Module, Function, Server}
+%% Module = atom()
+%% Function = atom()
+%% Server = atom()
 %% Reason = rpcerror
 %%
-subscribe(Bus) ->
-	rpc({subscribe, Bus}).
+subscribe(MailBox, Bus) ->
+	rpc({subscribe, MailBox, Bus}).
 
 %% @spec unsubscribe(Bus) -> {ServerPid, ok} | {error, Reason}
-%% Reason = rpcerror
+%% @see subscribe/2
 %%
-unsubscribe(Bus) ->
-	rpc({unsubscribe, Bus}).
+unsubscribe(MailBox, Bus) ->
+	rpc({unsubscribe, MailBox, Bus}).
 
 %% @spec getsubs() -> {ServerPid, {busses, Busses}} | {error, Reason}
 %% Reason = rpcerror
@@ -84,6 +92,45 @@ unsubscribe(Bus) ->
 getsubs() ->
 	rpc(getsubs).
 
+
+
+%% ----------------------               ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% REMOTE ACCESS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------               ------------------------------
+
+
+%% @private
+rpc(Message) ->
+	%% grab the source node for convenience to the caller
+	From=node(),
+	Rnode=mng:getvar({mswitch, rnode}, undefined),
+	rpc(From, Message, Rnode).
+
+rpc(From, Message, undefined) ->
+	Rnode=mng:make_node(?SERVER),
+	put({mswitch, rnode}, Rnode),
+	dorpc(From, Rnode, Message);
+
+rpc(FromNode, Message, RemoteNode) ->
+	dorpc(FromNode, RemoteNode, Message).
+
+
+%% @private
+dorpc(FromNode, RemoteNode, Message) ->
+	io:format("dorpc: Fnode[~p] Rnode[~p] Message[~p]~n", [FromNode, RemoteNode, Message]),
+	case rpc:call(RemoteNode, mswitch, call, [FromNode, Message], ?TIMEOUT) of
+		{badrpc, Reason} ->
+			io:format("dorpc: badrpc: ~p~n", [Reason]),
+			{error, Reason};
+		
+		{ServerPid, ok} ->
+			{ServerPid, ok};
+		
+		Other ->
+			io:format("dorpc: unknown message[~p]~n", [Other]),
+			mng:msg("dorpc: unknown message[~p]", [Other]),
+			Other
+	end.
 
 
 
@@ -100,6 +147,7 @@ getsubs() ->
 %%
 
 call(FromNode, Q) ->
+	io:format("call: from[~p] Q[~p]~n", [FromNode, Q]),
 	mng:msg("rpc: From[~p] Message[~p]", [FromNode, Q]),
 	?SERVER ! {self(), {FromNode, Q}},
 	receive
@@ -146,16 +194,17 @@ handle(From, _FromNode, getsubs) ->
 	reply(From, {busses, Busses});
 
 
-handle(From, FromNode, {subscribe, Bus}) ->
-	mng:add_sub(Bus, FromNode),
+handle(From, FromNode, {subscribe, MailBox, Bus}) ->
+	mng:add_sub(Bus, {FromNode, MailBox}),
+	mng:msg("subscribe: node[~p] bus[~p]", [FromNode, Bus]),
 	reply(From, ok);
 
 %% API - UN-SUBSCRIBE
 %% ==================
 %%
 %% @private
-handle(From, FromNode, {unsubscribe, Bus}) ->
-	mng:rem_sub(Bus, FromNode),
+handle(From, FromNode, {unsubscribe, MailBox, Bus}) ->
+	mng:rem_sub(Bus, {FromNode, MailBox}),
 	reply(From, ok);
 
 
@@ -163,9 +212,10 @@ handle(From, FromNode, {unsubscribe, Bus}) ->
 %% =============
 %%
 %% @private
-handle(From, _FromNode, {publish, Bus, Message}) ->
+handle(From, FromNode, {publish, Bus, Message}) ->
 	Subscribers=mng:getsubs(Bus),
-	send(From, Subscribers, Message).
+	send(FromNode, Subscribers, Message),
+	reply(From, ok).
 
 
 
@@ -173,22 +223,29 @@ handle(From, _FromNode, {publish, Bus, Message}) ->
 
 
 
-send(_From, [], _Message) -> no_subs;
-send(From, Subs, Message) -> dosend(From, Subs, Message).
+send(_FromNode, [], _Message) -> no_subs;
+send(FromNode, Subs, Message) -> dosend(FromNode, Subs, Message).
 
 
-dosend(_From, [], _Message) ->
+dosend(_FromNode, [], _Message) ->
 	no_more_subs;
 
-dosend(From, [Current|Rest], Message) ->
-	_Ret=sendto(From, Current, Message),
-	dosend(From, Rest, Message).
+dosend(FromNode, [Current|Rest], Message) ->
+	sendto(FromNode, Current, Message),
+	dosend(FromNode, Rest, Message).
 
 
-sendto(From, To, Message) ->
-	try To ! {From, Message} of
-		{From, Message} ->
-			mng:msg("sendto: To[~p] Message[~p]", [To, Message]),
+%% don't send to self!
+sendto(X, {X, {_,_}}, _Message) ->
+	skip_self;
+
+sendto(FromNode, To, Message) ->
+	%% extract mailbox parameters
+	{DestNode, {Module, Function, Server}} = To,
+	
+	try rpc:call(DestNode, Module, Function, {FromNode, Server, Message}) of
+		{FromNode, Message} ->
+			mng:msg("sendto: From[~p] To[~p] Message[~p]", [FromNode, To, Message]),
 			ok;
 		_ ->
 			mng:delete_sub(To),
@@ -206,36 +263,4 @@ sendto(From, To, Message) ->
 reply(To, Message) ->
 	To ! {reply, self(), Message}.
 
-
-%% ----------------------               ------------------------------
-%%%%%%%%%%%%%%%%%%%%%%%%% REMOTE ACCESS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ----------------------               ------------------------------
-
-
-%% @private
-rpc(Message) ->
-	From=node(),
-	Rnode=mng:getvar({mswitch, rnode}, undefined),
-	rpc(From, Message, Rnode).
-
-rpc(From, Message, undefined) ->
-	Rnode=mng:make_node(?SERVER),
-	put({mswitch, rnode}, Rnode),
-	dorpc(Rnode, From, Message);
-
-
-rpc(FromNode, Message, RemoteNode) ->
-	dorpc(FromNode, RemoteNode, Message).
-
-
-%% @private
-dorpc(FromNode, RemoteNode, Message) ->
-	
-	case rpc:call(RemoteNode, mswitch, call, [FromNode, Message], 2000) of
-		{badrpc, _Reason} ->
-			rpcerror;
-		
-		Other ->
-			Other
-	end.
 

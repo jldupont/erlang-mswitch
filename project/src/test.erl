@@ -12,17 +12,23 @@
 %% Exported Functions
 %%
 -export([
-		 start/1,
+		 start/2,
+		 inbox/1,
 		 loop/0
 		 ]).
 
 %%
 %% API Functions
 %%
-start(Busses) ->
+start(Server, Busses) ->
 	Pid=spawn_link(?MODULE, loop, []),
-	Pid ! {busses, Busses},
+	register(Server, Pid),
+	Pid ! {params, Server, Busses},
 	{ok, Pid}.
+
+
+inbox({FromNode, Server, Message}) ->
+	Server ! {FromNode, Message}.
 
 
 
@@ -34,8 +40,9 @@ start(Busses) ->
 loop() ->
 	receive
 		
-		{busses, Busses} ->
-			subscribe(Busses);
+		{params, Server, Busses} ->
+			io:format("params: server[~p] busses[~p]~n", [Server, Busses]),
+			subscribe(Server, Busses);
 		
 		stop ->
 			exit(ok);
@@ -46,20 +53,20 @@ loop() ->
 	after ?TIMEOUT ->
 
 		Count=get(count),
-		mswitch:publish(Bus, "Count: "++Count)
+		mswitch:publish(notif, "Count: "++Count)
 		
 	end,
 	loop().
 
 
-subscribe([]) ->
+subscribe(Server, []) ->
 	done;
 
-subscribe([Bus|Rest]) ->
-	subscribe(Rest),
-	mswitch:subscribe(Bus);
+subscribe(Server, [Bus|Rest]) ->
+	subscribe(Server, Rest),
+	mswitch:subscribe({test, inbox, Server}, Bus);
 
-subscribe(Bus) ->
+subscribe(Server, Bus) ->
 	mswitch:subscribe(Bus).
 
 
