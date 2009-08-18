@@ -1,0 +1,9 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -sname test2
+%%
+%% @author Jean-Lou Dupont
+%%
+main(_) ->
+	code:add_path("../ebin"),
+	test:start(server2, [notif]).
