@@ -57,9 +57,11 @@ stop() ->
 %%
 publish(Bus, Message) ->
 	Reply=rpc({publish, Bus, Message}),
+	mng:msg("publish:Reply[~p]", [Reply]),
 	handleReply(Reply).
 
 %% @spec subscribe(Bus) -> {ServerPid, ok} | {error, Reason}
+%% Reason = rpcerror
 %%
 subscribe(Bus) ->
 	%% keep a local context
@@ -67,13 +69,17 @@ subscribe(Bus) ->
 	rpc({subscribe, Bus}).
 
 %% @spec unsubscribe(Bus) -> {ServerPid, ok} | {error, Reason}
+%% Reason = rpcerror
 %%
 unsubscribe(Bus) ->
 	%% keep a local context
 	mng:rem_sub(Bus, self()),
 	rpc({unsubscribe, Bus}).
 
-
+%% @spec getsubs() -> {ServerPid, {busses, Busses}} | {error, Reason}
+%% Reason = rpcerror
+%% Busses = list()
+%%
 getsubs() ->
 	rpc(getsubs).
 
