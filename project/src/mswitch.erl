@@ -1,6 +1,7 @@
 %% Author: Jean-Lou Dupont
 %% Created: 2009-08-15
-%% Description: TODO: Add description to mswitch
+%% Description: Distributed Message Switch
+%%
 -module(mswitch).
 
 %%
@@ -117,7 +118,7 @@ rpc(FromNode, Message, RemoteNode) ->
 
 %% @private
 dorpc(FromNode, RemoteNode, Message) ->
-	io:format("dorpc: Fnode[~p] Rnode[~p] Message[~p]~n", [FromNode, RemoteNode, Message]),
+	%%io:format("dorpc: Fnode[~p] Rnode[~p] Message[~p]~n", [FromNode, RemoteNode, Message]),
 	case rpc:call(RemoteNode, mswitch, call, [FromNode, Message], ?TIMEOUT) of
 		{badrpc, Reason} ->
 			io:format("dorpc: badrpc: ~p~n", [Reason]),
@@ -147,7 +148,7 @@ dorpc(FromNode, RemoteNode, Message) ->
 %%
 
 call(FromNode, Q) ->
-	io:format("call: from[~p] Q[~p]~n", [FromNode, Q]),
+	%%io:format("call: from[~p] Q[~p]~n", [FromNode, Q]),
 	mng:msg("rpc: From[~p] Message[~p]", [FromNode, Q]),
 	?SERVER ! {self(), {FromNode, Q}},
 	receive
@@ -176,7 +177,8 @@ loop() ->
 		stop ->
 			exit(ok);
 		
-		{From, {FromNode, Message}} -> handle(From, FromNode, Message);
+		{From, {FromNode, Message}} -> 
+			handle(From, FromNode, Message);
 		
 		Other ->
 			mng:msg("loop: unknown rx: ~p", [Other])
@@ -195,8 +197,8 @@ handle(From, _FromNode, getsubs) ->
 
 
 handle(From, FromNode, {subscribe, MailBox, Bus}) ->
-	mng:add_sub(Bus, {FromNode, MailBox}),
 	mng:msg("subscribe: node[~p] bus[~p]", [FromNode, Bus]),
+	mng:add_sub(Bus, {FromNode, MailBox}),
 	reply(From, ok);
 
 %% API - UN-SUBSCRIBE
@@ -204,6 +206,7 @@ handle(From, FromNode, {subscribe, MailBox, Bus}) ->
 %%
 %% @private
 handle(From, FromNode, {unsubscribe, MailBox, Bus}) ->
+	mng:msg("unsubscribe: node[~p] bus[~p]", [FromNode, Bus]),	
 	mng:rem_sub(Bus, {FromNode, MailBox}),
 	reply(From, ok);
 
@@ -235,19 +238,22 @@ dosend(FromNode, [Current|Rest], Message) ->
 	dosend(FromNode, Rest, Message).
 
 
+%% @private
 %% don't send to self!
-sendto(X, {X, {_,_}}, _Message) ->
+sendto(X, {X, {_,_,_}}, _Message) ->
+	%%mng:msg("skip self!"),
 	skip_self;
 
 sendto(FromNode, To, Message) ->
 	%% extract mailbox parameters
 	{DestNode, {Module, Function, Server}} = To,
+	mng:msg("sendto: Dest[~p] Module[~p] Function[~p] Message[~p]", [DestNode, Module, Function, Message]),
 	
-	try rpc:call(DestNode, Module, Function, {FromNode, Server, Message}) of
+	try rpc:call(DestNode, Module, Function, [{FromNode, Server, Message}]) of
 		{FromNode, Message} ->
-			mng:msg("sendto: From[~p] To[~p] Message[~p]", [FromNode, To, Message]),
 			ok;
-		_ ->
+		Other ->
+			mng:msg("rpc:call error: [~p]",[Other]),
 			mng:delete_sub(To),
 			{removed_sub, To}
 	catch 

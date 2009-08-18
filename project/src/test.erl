@@ -28,6 +28,7 @@ start(Server, Busses) ->
 
 
 inbox({FromNode, Server, Message}) ->
+	%%io:format("inbox, message[~p]~n",[Message]),
 	Server ! {FromNode, Message}.
 
 
@@ -52,8 +53,8 @@ loop() ->
 		
 	after ?TIMEOUT ->
 
-		Count=get(count),
-		mswitch:publish(notif, "Count: "++Count)
+		Count=pvadd(count,1),
+		mswitch:publish(notif, "Count: "++erlang:integer_to_list(Count))
 		
 	end,
 	loop().
@@ -70,6 +71,19 @@ subscribe(Server, Bus) ->
 	mswitch:subscribe(Bus).
 
 
+add(undefined, Value) ->
+	Value;
 
+add(Var, Value) ->
+	Var + Value.
+
+
+
+pvadd(Var, Value) ->
+	Count=get(Var),
+	NewCount = test:add(Count, Value),
+	put(Var, NewCount),
+	NewCount.
+	
 
 	
