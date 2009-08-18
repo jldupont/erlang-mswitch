@@ -4,8 +4,9 @@
 -module(mng).
 
 %%
-%% Include files
+%% MACROS
 %%
+
 
 %%
 %% Exported Functions
@@ -210,4 +211,5 @@ make_node(Name , Node) when is_list(Name) ->
 	PartialName=string:concat(Name, "@"),
 	CompleteName=string:concat(PartialName, Host),
 	erlang:list_to_atom(CompleteName).
+
 
