@@ -5,55 +5,25 @@
 
 -compile(export_all).
 
+-define(TIMEOUT, 2000).
 
-%%
-%% Macros
-%%
--define(CLIENTS, [{client_a, []},{client_b, [bus1]}, {client_c, [bus1, bus2]} ]).
 
 %%
 %% Exported Functions
 %%
 -export([
-		 start/0,
-		 stop/0,
-		 loop/1
+		 start/1,
+		 loop/0
 		 ]).
 
 %%
 %% API Functions
 %%
-start() ->
-	start_clients(?CLIENTS).
-
-start_clients([]) ->
-	done;
-
-start_clients([Client|Rest]) ->
-	start_client(Client),
-	start_clients(Rest).
-
-start_client(Client) ->
-	{Name, Busses} = Client,
-	Pid=spawn_link(?MODULE, loop, [Name]),
-	register(Name, Pid),
+start(Busses) ->
+	Pid=spawn_link(?MODULE, loop, []),
 	Pid ! {busses, Busses},
 	{ok, Pid}.
 
-	
-stop() ->
-	stop_clients(?CLIENTS).
-
-stop_clients([]) ->
-	done;
-
-stop_clients([Client|Rest]) ->
-	stop_client(Client),
-	stop_clients(Rest).
-
-stop_client(Client) ->
-	{Name, _} = Client,
-	Name ! stop.
 
 
 
@@ -61,11 +31,11 @@ stop_client(Client) ->
 %% Local Functions
 %%
 
-loop(Name) ->
+loop() ->
 	receive
 		
 		{busses, Busses} ->
-			subscribe(Name, Busses);
+			subscribe(Busses);
 		
 		stop ->
 			exit(ok);
@@ -73,19 +43,24 @@ loop(Name) ->
 		Other ->
 			io:format("~p: unhandled message [~p]~n", [?MODULE, Other])
 		
+	after ?TIMEOUT ->
+
+		Count=get(count),
+		mswitch:publish(Bus, "Count: "++Count)
+		
 	end,
-	loop(Name).
+	loop().
 
 
-subscribe(_, []) ->
+subscribe([]) ->
 	done;
 
-subscribe(Name, [Bus|Rest]) ->
-	subscribe(Name, Rest),
-	mswitch:subscribe(Name, {subscribe, Bus});
+subscribe([Bus|Rest]) ->
+	subscribe(Rest),
+	mswitch:subscribe(Bus);
 
-subscribe(Name, Bus) ->
-	mswitch:subscribe(Name, {subscribe, Bus}).
+subscribe(Bus) ->
+	mswitch:subscribe(Bus).
 
 
 

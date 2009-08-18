@@ -15,14 +15,15 @@
 -export([
 		 start_link/0, start_link/1,
 		 stop/0,
-		 rpc/2, rpc/3
+		 rpc/1, rpc/3
 		 ]).
 
 -export([
-		 publish/3,
-		 subscribe/2,
-		 unsubscribe/2,
-		 getsubs/1
+		 status/0,
+		 publish/2,
+		 subscribe/1,
+		 unsubscribe/1,
+		 getsubs/0
 		 ]).
 
 %%
@@ -52,31 +53,36 @@ stop() ->
 	?SERVER ! stop.
 
 
+%% @spec status() -> {ServerPid, ok} | {error, Reason}
+%% Reason = rpcerror
+%%
+status() ->
+	rpc(status).
 
 %% @spec publish(Bus, Message) -> {ServerPid, ok} | {error, Reason}
 %% Reason = rpcerror
 %%
-publish(FromNode, Bus, Message) ->
-	rpc(FromNode, {publish, Bus, Message}).
+publish(Bus, Message) ->
+	rpc({publish, Bus, Message}).
 
 %% @spec subscribe(Bus) -> {ServerPid, ok} | {error, Reason}
 %% Reason = rpcerror
 %%
-subscribe(FromNode, Bus) ->
-	rpc(FromNode, {subscribe, Bus}).
+subscribe(Bus) ->
+	rpc({subscribe, Bus}).
 
 %% @spec unsubscribe(Bus) -> {ServerPid, ok} | {error, Reason}
 %% Reason = rpcerror
 %%
-unsubscribe(FromNode, Bus) ->
-	rpc(FromNode, {unsubscribe, Bus}).
+unsubscribe(Bus) ->
+	rpc({unsubscribe, Bus}).
 
 %% @spec getsubs() -> {ServerPid, {busses, Busses}} | {error, Reason}
 %% Reason = rpcerror
 %% Busses = list()
 %%
-getsubs(FromNode) ->
-	rpc(FromNode, getsubs).
+getsubs() ->
+	rpc(getsubs).
 
 
 
@@ -206,9 +212,9 @@ reply(To, Message) ->
 %% ----------------------               ------------------------------
 
 
-
 %% @private
-rpc(From, Message) ->
+rpc(Message) ->
+	From=node(),
 	Rnode=mng:getvar({mswitch, rnode}, undefined),
 	rpc(From, Message, Rnode).
 
