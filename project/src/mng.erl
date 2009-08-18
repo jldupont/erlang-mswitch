@@ -30,6 +30,10 @@
 		 isdebug/0
 		 ]).
 
+-export([
+		 extract_host/0, extract_host/1,
+		 make_node/1, make_node/2
+		 ]).
 
 %%
 %% Local Functions
@@ -65,6 +69,7 @@ rem_sub(Bus, Sub) ->
 %% Remove a subscriber from the tables
 %% @private
 delete_sub(Sub) ->
+	mng:msg("Deleting sub[~p]", [Sub]),
 	Busses=getvar({mswitch, subs, Sub}, []),
 	remove_sub_from_busses(Busses, Sub).
 
@@ -155,9 +160,12 @@ rem_from_var(VarName, VarValue) ->
 
 
 %% @private
+%% @spec msg(Message) -> _
 msg(Message) ->
 	msg(Message, []).
 
+%% @private
+%% @spec msg(Message, Params) -> _
 msg(Message, Params) ->
 	Debug=isdebug(),
 	domsg(Debug, Message, Params).
@@ -169,3 +177,37 @@ domsg(false, _, _) ->
 domsg(true, Message, Params) ->
 	Msg="~s:",
 	io:format(Msg++Message++"~n", ["mswitch"]++Params).
+
+
+%% Extracts the "host" part of a node
+%% i.e.  host@node
+%%
+%% @spec extract_host() -> string()
+%%
+extract_host() ->
+	extract_host(node()).
+
+extract_host(Node) when is_atom(Node) ->
+	extract_host(atom_to_list(Node));
+
+extract_host(Node) when is_list(Node) ->
+	Tokens = string:tokens(Node, "@"),
+	lists:last(Tokens).
+	
+
+%% Makes a "short name" node from a name
+%%
+%% @spec make_node(Name) -> string()
+%%
+make_node(Name) ->
+	make_node(Name, node()).
+
+make_node(Name, Node) when is_atom(Name) ->
+	make_node(erlang:atom_to_list(Name), Node);
+
+make_node(Name , Node) when is_list(Name) ->
+	Host=tools:extract_host(Node),
+	PartialName=string:concat(Name, "@"),
+	CompleteName=string:concat(PartialName, Host),
+	erlang:list_to_atom(CompleteName).
+

@@ -57,7 +57,7 @@ stop() ->
 %%
 publish(Bus, Message) ->
 	Reply=rpc({publish, Bus, Message}),
-	mng:msg("publish:Reply[~p]", [Reply]),
+	mng:msg("publish:Reply[~p]", [Reply]), %%debug
 	handleReply(Reply).
 
 %% @spec subscribe(Bus) -> {ServerPid, ok} | {error, Reason}
@@ -87,7 +87,8 @@ getsubs() ->
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% SYNC - In the event of mswitch crashing,
+%%        clients will be re-subscribed automatically.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -110,6 +111,7 @@ sync(PreviousPid, CurrentPid) when PreviousPid == CurrentPid ->
 	ok;
 
 sync(PreviousPid, CurrentPid) when PreviousPid =/= CurrentPid ->
+	mng:msg("sync: resubscribe [~p]", [self()]), %%debug
 	resubscribe().
 
 
@@ -129,6 +131,10 @@ subscribe_to_list(Bus) ->
 
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 
 %%
@@ -136,7 +142,7 @@ subscribe_to_list(Bus) ->
 %%
 
 rpc(Q) ->
-	io:format("~p: rpc(~p)~n", [?MODULE, Q]),
+	mng:msg("rpc: ~p", [Q]),
 	?SERVER ! {self(), Q},
 	receive
 		{reply, ServerPid, Reply} ->
@@ -147,8 +153,8 @@ rpc(Q) ->
 			{error, rpcerror}
 	
 	after ?TIMEOUT ->
-			
-			io:format("~p: rpc timeout~n",[?MODULE]),
+
+			mng:msg("rpc: timeout"),
 			{error, rpcerror}
 	end.
 
@@ -172,6 +178,7 @@ loop() ->
 
 
 %% API - SUBSCRIBE
+%% ===============
 %%
 %% @private
 handle(From, getsubs) ->
@@ -183,6 +190,7 @@ handle(From, subscribe, Bus) ->
 	reply(From, ok);
 
 %% API - UN-SUBSCRIBE
+%% ==================
 %%
 %% @private
 handle(From, unsubscribe, Bus) ->
@@ -190,6 +198,7 @@ handle(From, unsubscribe, Bus) ->
 	reply(From, ok).
 
 %% API - PUBLISH
+%% =============
 %%
 %% @private
 handle(From, publish, Bus, Message) ->
@@ -217,6 +226,7 @@ dosend(From, [Current|Rest], Message) ->
 sendto(From, To, Message) ->
 	try To ! {From, Message} of
 		{From, Message} ->
+			mng:msg("sendto: To[~p] Message[~p]", [To, Message]),
 			ok;
 		_ ->
 			mng:delete_sub(To),
