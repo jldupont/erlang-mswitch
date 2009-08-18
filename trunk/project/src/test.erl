@@ -3,6 +3,9 @@
 %% Description: 
 -module(test).
 
+-compile(export_all).
+
+
 %%
 %% Macros
 %%
@@ -78,13 +81,16 @@ subscribe([]) ->
 	done;
 
 subscribe([Bus|Rest]) ->
-	mswitch:subscribe(Bus),
-	subscribe(Rest);
+	subscribe(Rest),
+	mswitch:rpc(subscribe, Bus);
 
 subscribe(Bus) ->
-	mswitch:subscribe(Bus),
-	done.
+	mswitch:rpc(subscribe, Bus).
 
 
-	
+
+getsubs() ->
+	mswitch:rpc(getsubs, []).
+
+
 	

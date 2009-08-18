@@ -14,7 +14,8 @@
 %%
 -export([
 		 start_link/0, start_link/1,
-		 stop/0
+		 stop/0,
+		 rpc/2, rpc/3
 		 ]).
 
 -export([
@@ -29,10 +30,11 @@
 %%
 -export([
 		 loop/0,
-		 rpc/1,
+		 call/1,
 		 handle/3, handle/4,
 		 send/3,
-		 reply/2
+		 reply/2,
+		 info/0
 		 ]).
 %%
 %% API Functions
@@ -56,7 +58,7 @@ stop() ->
 %% Reason = rpcerror
 %%
 publish(Bus, Message) ->
-	Reply=rpc({publish, Bus, Message}),
+	Reply=call({publish, Bus, Message}),
 	mng:msg("publish:Reply[~p]", [Reply]), %%debug
 	handleReply(Reply).
 
@@ -66,7 +68,7 @@ publish(Bus, Message) ->
 subscribe(Bus) ->
 	%% keep a local context
 	mng:add_sub(Bus, self()), 
-	rpc({subscribe, Bus}).
+	call({subscribe, Bus}).
 
 %% @spec unsubscribe(Bus) -> {ServerPid, ok} | {error, Reason}
 %% Reason = rpcerror
@@ -74,14 +76,14 @@ subscribe(Bus) ->
 unsubscribe(Bus) ->
 	%% keep a local context
 	mng:rem_sub(Bus, self()),
-	rpc({unsubscribe, Bus}).
+	call({unsubscribe, Bus}).
 
 %% @spec getsubs() -> {ServerPid, {busses, Busses}} | {error, Reason}
 %% Reason = rpcerror
 %% Busses = list()
 %%
 getsubs() ->
-	rpc(getsubs).
+	call(getsubs).
 
 
 
@@ -141,7 +143,7 @@ subscribe_to_list(Bus) ->
 %% Local Functions
 %%
 
-rpc(Q) ->
+call(Q) ->
 	mng:msg("rpc: ~p", [Q]),
 	?SERVER ! {self(), Q},
 	receive
@@ -163,6 +165,9 @@ rpc(Q) ->
 %% SERVER message loop
 loop() ->
 	receive
+		{From, getpid} ->
+			From ! {reply, self(), pid};
+			
 		{params, Params} ->
 			put(params, Params);
 		
@@ -245,3 +250,36 @@ reply(To, Message) ->
 	To ! {reply, self(), Message}.
 
 
+
+
+%% @private
+rpc(Function, Params) ->
+	Rnode=mng:getvar({mswitch, rnode}, undefined),
+	rpc(Function, Params, Rnode).
+
+rpc(Function, Params, undefined) ->
+	Rnode=mng:make_node(?SERVER),
+	put({mswitch, rnode}, Rnode),
+	dorpc(Rnode, Function, Params);
+
+
+rpc(Function, Params, Node) ->
+	dorpc(Node, Function, Params).
+
+
+%% @private
+dorpc(Node, Function, Params) ->
+	
+	case rpc:call(Node, mswitch, Function, [Params], 2000) of
+		{badrpc, _Reason} ->
+			rpcerror;
+		
+		Other ->
+			Other
+	end.
+
+
+info() ->
+	{Pid, pid}=call(getpid),
+	io:format("info: pid: ~p~n", [Pid]),
+	erlang:process_info(Pid).
