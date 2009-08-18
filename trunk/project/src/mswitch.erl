@@ -13,15 +13,15 @@
 %% Exported Functions
 %%
 -export([
-		 start_link/0,
-		 start_link/1,
+		 start_link/0, start_link/1,
 		 stop/0
 		 ]).
 
 -export([
 		 publish/2,
 		 subscribe/1,
-		 unsubscribe/1
+		 unsubscribe/1,
+		 getsubs/0
 		 ]).
 
 %%
@@ -30,8 +30,7 @@
 -export([
 		 loop/0,
 		 rpc/1,
-		 handle/3,
-		 handle/4,
+		 handle/3, handle/4,
 		 send/3,
 		 reply/2
 		 ]).
@@ -53,25 +52,76 @@ stop() ->
 
 
 
-%% @spec publish(Bus, Message) -> ok | {error, Reason}
+%% @spec publish(Bus, Message) -> {ServerPid, ok} | {error, Reason}
 %% Reason = rpcerror
 %%
 publish(Bus, Message) ->
-	rpc({publish, Bus, Message}).
+	Reply=rpc({publish, Bus, Message}),
+	handleReply(Reply).
 
-%% @spec subscribe(Bus) -> ok | {error, Reason}
+%% @spec subscribe(Bus) -> {ServerPid, ok} | {error, Reason}
 %%
 subscribe(Bus) ->
 	%% keep a local context
 	mng:add_sub(Bus, self()), 
 	rpc({subscribe, Bus}).
 
-%% @spec unsubscribe(Bus) -> ok | {error, Reason}
+%% @spec unsubscribe(Bus) -> {ServerPid, ok} | {error, Reason}
 %%
 unsubscribe(Bus) ->
 	%% keep a local context
 	mng:rem_sub(Bus, self()),
 	rpc({unsubscribe, Bus}).
+
+
+getsubs() ->
+	rpc(getsubs).
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+handleReply({Pid, ok}) ->
+	PreviousPid=mng:getvar({mswitch, pid},undefined),
+	sync(PreviousPid, Pid);
+
+%% Any other reply, we can't do much...
+handleReply(_) ->
+	ok.
+
+%% @private
+%% Start-up: the client should have subscribed anyways
+sync(undefined, _) ->
+	ok;
+
+sync(PreviousPid, CurrentPid) when PreviousPid == CurrentPid ->
+	ok;
+
+sync(PreviousPid, CurrentPid) when PreviousPid =/= CurrentPid ->
+	resubscribe().
+
+
+resubscribe() ->
+	Busses=mng:getbusses(),
+	subscribe_to_list(Busses).
+
+subscribe_to_list([]) ->
+	ok;
+
+subscribe_to_list([Bus|Rest]) ->
+	subscribe(Bus),
+	subscribe_to_list(Rest);
+
+subscribe_to_list(Bus) ->
+	subscribe(Bus).
+
+
 
 
 
@@ -83,8 +133,8 @@ rpc(Q) ->
 	io:format("~p: rpc(~p)~n", [?MODULE, Q]),
 	?SERVER ! {self(), Q},
 	receive
-		{?SERVER, Reply} ->
-			Reply;
+		{reply, ServerPid, Reply} ->
+			{ServerPid, Reply};
 	
 		Other ->
 			error_logger:error_msg("~p rpc: received [~p]~n", [?MODULE, Other]),
@@ -97,6 +147,8 @@ rpc(Q) ->
 	end.
 
 
+%% @private
+%% SERVER message loop
 loop() ->
 	receive
 		{params, Params} ->
@@ -104,15 +156,10 @@ loop() ->
 		
 		stop ->
 			exit(ok);
-		
-		{From, {publish, Bus, Message}} ->
-			handle(From, publish, Bus, Message);
-		
-		{From, {subscribe, Bus}} ->
-			handle(From, subscribe, Bus);
-		
-		{From, {unsubscribe, Bus}} ->
-			handle(From, unsubscribe, Bus)
+		{From, getsubs} -> 					handle(From, getsubs);
+		{From, {publish, Bus, Message}} ->	handle(From, publish, Bus, Message);
+		{From, {subscribe, Bus}} ->			handle(From, subscribe, Bus);
+		{From, {unsubscribe, Bus}} ->		handle(From, unsubscribe, Bus)
 
 	end,
 	loop().
@@ -121,6 +168,10 @@ loop() ->
 %% API - SUBSCRIBE
 %%
 %% @private
+handle(From, getsubs) ->
+	Busses=mng:getbusses(),
+	reply(From, {busses, Busses}).
+
 handle(From, subscribe, Bus) ->
 	mng:add_sub(Bus, From),
 	reply(From, ok);
@@ -175,6 +226,6 @@ sendto(From, To, Message) ->
 
 %% @private
 reply(To, Message) ->
-	?SERVER ! {reply, Message}.
+	To ! {reply, self(), Message}.
 
 
