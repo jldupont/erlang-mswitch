@@ -65,7 +65,7 @@ loop(Name) ->
 	receive
 		
 		{busses, Busses} ->
-			subscribe(Busses);
+			subscribe(Name, Busses);
 		
 		stop ->
 			exit(ok);
@@ -77,20 +77,17 @@ loop(Name) ->
 	loop(Name).
 
 
-subscribe([]) ->
+subscribe(_, []) ->
 	done;
 
-subscribe([Bus|Rest]) ->
-	subscribe(Rest),
-	mswitch:rpc(subscribe, Bus);
+subscribe(Name, [Bus|Rest]) ->
+	subscribe(Name, Rest),
+	mswitch:subscribe(Name, {subscribe, Bus});
 
-subscribe(Bus) ->
-	mswitch:rpc(subscribe, Bus).
+subscribe(Name, Bus) ->
+	mswitch:subscribe(Name, {subscribe, Bus}).
 
 
-
-getsubs() ->
-	mswitch:rpc(getsubs, []).
 
 
 	

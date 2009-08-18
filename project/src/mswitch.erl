@@ -19,10 +19,10 @@
 		 ]).
 
 -export([
-		 publish/2,
-		 subscribe/1,
-		 unsubscribe/1,
-		 getsubs/0
+		 publish/3,
+		 subscribe/2,
+		 unsubscribe/2,
+		 getsubs/1
 		 ]).
 
 %%
@@ -30,11 +30,10 @@
 %%
 -export([
 		 loop/0,
-		 call/1,
-		 handle/3, handle/4,
+		 call/2,
+		 handle/3,
 		 send/3,
-		 reply/2,
-		 info/0
+		 reply/2
 		 ]).
 %%
 %% API Functions
@@ -57,79 +56,30 @@ stop() ->
 %% @spec publish(Bus, Message) -> {ServerPid, ok} | {error, Reason}
 %% Reason = rpcerror
 %%
-publish(Bus, Message) ->
-	Reply=call({publish, Bus, Message}),
-	mng:msg("publish:Reply[~p]", [Reply]), %%debug
-	handleReply(Reply).
+publish(FromNode, Bus, Message) ->
+	rpc(FromNode, {publish, Bus, Message}).
 
 %% @spec subscribe(Bus) -> {ServerPid, ok} | {error, Reason}
 %% Reason = rpcerror
 %%
-subscribe(Bus) ->
-	%% keep a local context
-	mng:add_sub(Bus, self()), 
-	call({subscribe, Bus}).
+subscribe(FromNode, Bus) ->
+	rpc(FromNode, {subscribe, Bus}).
 
 %% @spec unsubscribe(Bus) -> {ServerPid, ok} | {error, Reason}
 %% Reason = rpcerror
 %%
-unsubscribe(Bus) ->
-	%% keep a local context
-	mng:rem_sub(Bus, self()),
-	call({unsubscribe, Bus}).
+unsubscribe(FromNode, Bus) ->
+	rpc(FromNode, {unsubscribe, Bus}).
 
 %% @spec getsubs() -> {ServerPid, {busses, Busses}} | {error, Reason}
 %% Reason = rpcerror
 %% Busses = list()
 %%
-getsubs() ->
-	call(getsubs).
+getsubs(FromNode) ->
+	rpc(FromNode, getsubs).
 
 
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% SYNC - In the event of mswitch crashing,
-%%        clients will be re-subscribed automatically.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-
-handleReply({Pid, ok}) ->
-	PreviousPid=mng:getvar({mswitch, pid},undefined),
-	sync(PreviousPid, Pid);
-
-%% Any other reply, we can't do much...
-handleReply(_) ->
-	ok.
-
-%% @private
-%% Start-up: the client should have subscribed anyways
-sync(undefined, _) ->
-	ok;
-
-sync(PreviousPid, CurrentPid) when PreviousPid == CurrentPid ->
-	ok;
-
-sync(PreviousPid, CurrentPid) when PreviousPid =/= CurrentPid ->
-	mng:msg("sync: resubscribe [~p]", [self()]), %%debug
-	resubscribe().
-
-
-resubscribe() ->
-	Busses=mng:getbusses(),
-	subscribe_to_list(Busses).
-
-subscribe_to_list([]) ->
-	ok;
-
-subscribe_to_list([Bus|Rest]) ->
-	subscribe(Bus),
-	subscribe_to_list(Rest);
-
-subscribe_to_list(Bus) ->
-	subscribe(Bus).
 
 
 
@@ -143,9 +93,9 @@ subscribe_to_list(Bus) ->
 %% Local Functions
 %%
 
-call(Q) ->
-	mng:msg("rpc: ~p", [Q]),
-	?SERVER ! {self(), Q},
+call(FromNode, Q) ->
+	mng:msg("rpc: From[~p] Message[~p]", [FromNode, Q]),
+	?SERVER ! {self(), {FromNode, Q}},
 	receive
 		{reply, ServerPid, Reply} ->
 			{ServerPid, Reply};
@@ -165,18 +115,17 @@ call(Q) ->
 %% SERVER message loop
 loop() ->
 	receive
-		{From, getpid} ->
-			From ! {reply, self(), pid};
 			
 		{params, Params} ->
 			put(params, Params);
 		
 		stop ->
 			exit(ok);
-		{From, getsubs} -> 					handle(From, getsubs);
-		{From, {publish, Bus, Message}} ->	handle(From, publish, Bus, Message);
-		{From, {subscribe, Bus}} ->			handle(From, subscribe, Bus);
-		{From, {unsubscribe, Bus}} ->		handle(From, unsubscribe, Bus)
+		
+		{From, {FromNode, Message}} -> handle(From, FromNode, Message);
+		
+		Other ->
+			mng:msg("loop: unknown rx: ~p", [Other])
 
 	end,
 	loop().
@@ -186,27 +135,29 @@ loop() ->
 %% ===============
 %%
 %% @private
-handle(From, getsubs) ->
+handle(From, _FromNode, getsubs) ->
 	Busses=mng:getbusses(),
-	reply(From, {busses, Busses}).
+	reply(From, {busses, Busses});
 
-handle(From, subscribe, Bus) ->
-	mng:add_sub(Bus, From),
+
+handle(From, FromNode, {subscribe, Bus}) ->
+	mng:add_sub(Bus, FromNode),
 	reply(From, ok);
 
 %% API - UN-SUBSCRIBE
 %% ==================
 %%
 %% @private
-handle(From, unsubscribe, Bus) ->
-	mng:rem_sub(Bus, From),
-	reply(From, ok).
+handle(From, FromNode, {unsubscribe, Bus}) ->
+	mng:rem_sub(Bus, FromNode),
+	reply(From, ok);
+
 
 %% API - PUBLISH
 %% =============
 %%
 %% @private
-handle(From, publish, Bus, Message) ->
+handle(From, _FromNode, {publish, Bus, Message}) ->
 	Subscribers=mng:getsubs(Bus),
 	send(From, Subscribers, Message).
 
@@ -250,27 +201,31 @@ reply(To, Message) ->
 	To ! {reply, self(), Message}.
 
 
+%% ----------------------               ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% REMOTE ACCESS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------               ------------------------------
+
 
 
 %% @private
-rpc(Function, Params) ->
+rpc(From, Message) ->
 	Rnode=mng:getvar({mswitch, rnode}, undefined),
-	rpc(Function, Params, Rnode).
+	rpc(From, Message, Rnode).
 
-rpc(Function, Params, undefined) ->
+rpc(From, Message, undefined) ->
 	Rnode=mng:make_node(?SERVER),
 	put({mswitch, rnode}, Rnode),
-	dorpc(Rnode, Function, Params);
+	dorpc(Rnode, From, Message);
 
 
-rpc(Function, Params, Node) ->
-	dorpc(Node, Function, Params).
+rpc(FromNode, Message, RemoteNode) ->
+	dorpc(FromNode, RemoteNode, Message).
 
 
 %% @private
-dorpc(Node, Function, Params) ->
+dorpc(FromNode, RemoteNode, Message) ->
 	
-	case rpc:call(Node, mswitch, Function, [Params], 2000) of
+	case rpc:call(RemoteNode, mswitch, call, [FromNode, Message], 2000) of
 		{badrpc, _Reason} ->
 			rpcerror;
 		
@@ -278,8 +233,3 @@ dorpc(Node, Function, Params) ->
 			Other
 	end.
 
-
-info() ->
-	{Pid, pid}=call(getpid),
-	io:format("info: pid: ~p~n", [Pid]),
-	erlang:process_info(Pid).
