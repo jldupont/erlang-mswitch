@@ -12,6 +12,7 @@
 %%
 -export([
 		 getsubs/1,
+		 getbusses/0,
 		 getvar/2, getvar/3,
 		 add_to_var/2,
 		 rem_from_var/2,
@@ -24,6 +25,7 @@
 		 ]).
 
 -export([
+		 msg/1, msg/2,
 		 tern/4,
 		 isdebug/0
 		 ]).
@@ -37,35 +39,9 @@
 getsubs(Bus) ->
 	getvar({mswitch, subscribers, Bus}, []).
 
+getbusses() ->
+	getvar({mswitch, subs, self()}, []).
 
-
-%% @spec getvar(VarName, Default) -> Value | Default
-%% Value = atom() | string() | integer() | float()
-getvar(VarName, Default) ->
-	VarValue=get(VarName),
-	getvar(VarName, VarValue, Default).
-
-getvar(VarName, undefined, Default) ->
-	put(VarName, Default),
-	Default;
-
-getvar(_VarName, VarValue, _Default) ->
-	VarValue.
-
-
-%% @private
-add_to_var(VarName, VarValue) ->
-	List=getvar(VarName, []),
-	FilteredList=List--[VarValue],
-	NewList=FilteredList++[VarValue],
-	put(VarName, NewList).
-
-
-%% @private
-rem_from_var(VarName, VarValue) ->
-	List=getvar(VarName, []),
-	FilteredList=List--[VarValue],
-	put(VarName, FilteredList).
 
 
 
@@ -148,3 +124,48 @@ isdebug() ->
 	lists:member(debug, Params).
 
 
+
+%% @spec getvar(VarName, Default) -> Value | Default
+%% Value = atom() | string() | integer() | float()
+getvar(VarName, Default) ->
+	VarValue=get(VarName),
+	getvar(VarName, VarValue, Default).
+
+getvar(VarName, undefined, Default) ->
+	put(VarName, Default),
+	Default;
+
+getvar(_VarName, VarValue, _Default) ->
+	VarValue.
+
+
+%% @private
+add_to_var(VarName, VarValue) ->
+	List=getvar(VarName, []),
+	FilteredList=List--[VarValue],
+	NewList=FilteredList++[VarValue],
+	put(VarName, NewList).
+
+
+%% @private
+rem_from_var(VarName, VarValue) ->
+	List=getvar(VarName, []),
+	FilteredList=List--[VarValue],
+	put(VarName, FilteredList).
+
+
+%% @private
+msg(Message) ->
+	msg(Message, []).
+
+msg(Message, Params) ->
+	Debug=isdebug(),
+	domsg(Debug, Message, Params).
+
+%% @private
+domsg(false, _, _) ->
+	ok;
+
+domsg(true, Message, Params) ->
+	Msg="~s:",
+	io:format(Msg++Message++"~n", ["mswitch"]++Params).
