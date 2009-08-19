@@ -11,7 +11,7 @@
 -define(TIMEOUT, 1000).
 
 %%
-%% Exported Functions
+%% Management API Functions
 %%
 -export([
 		 start_link/0, start_link/1,
@@ -19,13 +19,11 @@
 		 ]).
 
 %%
-%% API functions
+%% Core API functions
 %%
 -export([
-		 status/0,
 		 publish/2,
-		 subscribe/2,
-		 unsubscribe/2,
+		 subscribe/2, unsubscribe/2,
 		 getsubs/0
 		 ]).
 
@@ -33,36 +31,49 @@
 %% Local Functions
 %%
 -export([
-		 loop/0,
-		 call/2,
-		 handle/3,
-		 send/3,
-		 reply/2
+		 loop/0, call/2,
+		 handle/3, send/3, reply/2
 		 ]).
-%%
-%% API Functions
+%% ----------------------                 ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% MANAGEMENT API  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------                 ------------------------------
+
+%% Starts the mswitch
 %%
 start_link() ->
-	start_link([]).
+	do_start_link([]).
 
+%% Starts the mswitch in debug mode (verbose)
+%%
+%% @spec start_link(debug) -> {ok, Pid}
 start_link(debug) ->
-	start_link([debug]);
+	do_start_link([debug]).
 
-start_link(Params) ->
+%% @private
+do_start_link(Params) ->
 	Pid = spawn_link(?MODULE, loop, []),
 	register(?SERVER, Pid),
 	Pid ! {params, Params},
 	{ok, Pid}.
 
-
+%% Stops the mswitch
+%%
+%% @spec stop() -> void()
 stop() ->
 	?SERVER ! stop.
 
 
-%% ----------------------      ------------------------------
-%%%%%%%%%%%%%%%%%%%%%%%%% API  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ----------------------      ------------------------------
+%% ----------------------           ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% CORE API  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------           ------------------------------
 
+%% Subscribe to a Bus with message delivery to MailBox
+%%
+%% The 'Server' parameter corresponds to a registered Pid used
+%% for receiving messages. The 'Module' and 'Function' parameters
+%% correspond to a valid Module:Function for handling the
+%% rpc:call from mswitch.
+%%
 %% @spec subscribe(MailBox, Bus) -> {ServerPid, ok} | {error, Reason}
 %%
 %% MailBox = {Module, Function, Server}
@@ -76,28 +87,28 @@ stop() ->
 subscribe(MailBox, Bus) ->
 	rpc({subscribe, MailBox, Bus}).
 
-%% @spec unsubscribe(Bus) -> {ServerPid, ok} | {error, Reason}
+%% Unsubscribe from Bus
+%%
+%% @spec unsubscribe(MailBox, Bus) -> {ServerPid, ok} | {error, Reason}
 %% @see subscribe/2
 %%
 unsubscribe(MailBox, Bus) ->
 	rpc({unsubscribe, MailBox, Bus}).
 
 
-%% @spec status() -> {ServerPid, ok} | {error, Reason}
-%% Reason = rpcerror
+%% Publish Message on Bus
 %%
-status() ->
-	rpc(status).
-
 %% @spec publish(Bus, Message) -> {ServerPid, ok} | {error, Reason}
-%% Reason = rpcerror
+%%
+%% Reason = rpcerror | mswitch_node_down
 %%
 publish(Bus, Message) ->
 	rpc({publish, Bus, Message}).
 
 
 %% @spec getsubs() -> {ServerPid, {busses, Busses}} | {error, Reason}
-%% Reason = rpcerror
+%%
+%% Reason = rpcerror | mswitch_node_down
 %% Busses = list()
 %%
 getsubs() ->
@@ -130,6 +141,9 @@ rpc(FromNode, Message, RemoteNode) ->
 %% @private
 dorpc(FromNode, RemoteNode, Message) ->
 	%%io:format("dorpc: Fnode[~p] Rnode[~p] Message[~p]~n", [FromNode, RemoteNode, Message]),
+	
+	%% If the mswitch daemon is down, this call will fail first and thus
+	%% {error, mswitch_node_down} will be received by the caller
 	case rpc:call(RemoteNode, mswitch, call, [FromNode, Message], ?TIMEOUT) of
 		{badrpc, _Reason} ->
 			%%io:format("dorpc: badrpc: ~p~n", [Reason]),
@@ -143,15 +157,10 @@ dorpc(FromNode, RemoteNode, Message) ->
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------                 ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% LOCAL FUNCTIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------                 ------------------------------
 
-
-
-%%
-%% Local Functions
-%%
 
 call(FromNode, Q) ->
 	%%io:format("call: from[~p] Q[~p]~n", [FromNode, Q]),
@@ -229,6 +238,7 @@ handle(From, FromNode, {publish, Bus, Message}) ->
 
 
 
+%% rpc reply mechanism
 %% @private
 reply(To, Message) ->
 	To ! {reply, self(), Message}.
@@ -277,8 +287,4 @@ sendto(FromNode, To, Message) ->
 			mng:delete_sub(To),
 			{removed_sub, To}
 	end.
-
-
-
-
 

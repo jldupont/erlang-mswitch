@@ -1,6 +1,8 @@
 %% Author: Jean-Lou Dupont
 %% Created: 2009-08-18
-%% Description: 
+%%
+%% NOTE: start with a unique short-name for
+%%       each instance e.g. erl -sname test1
 -module(test).
 
 -compile(export_all).
@@ -12,6 +14,7 @@
 %% Exported Functions
 %%
 -export([
+		 go/0,
 		 start/2,
 		 inbox/1,
 		 loop/0
@@ -20,6 +23,9 @@
 %%
 %% API Functions
 %%
+go() ->
+	start(test, [notif]).
+
 start(Server, Busses) ->
 	Pid=spawn_link(?MODULE, loop, []),
 	register(Server, Pid),
