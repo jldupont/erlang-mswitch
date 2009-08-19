@@ -15,7 +15,7 @@ this_lib="erlang-mswitch"
 all = [
 		{'src': './project/src',     'dst':'./project/packages/debian/usr/lib/erlang/lib/mswitch-%s/src'},	   
 		{'src': './project/ebin',    'dst':'./project/packages/debian/usr/lib/erlang/lib/mswitch-%s/ebin'},
-		{'src': './project/include', 'dst':'./project/packages/debian/usr/lib/erlang/lib/mswitch-%s/include'},
+		##{'src': './project/include', 'dst':'./project/packages/debian/usr/lib/erlang/lib/mswitch-%s/include'},
 		]
 
 class targets(object):
@@ -36,6 +36,11 @@ class targets(object):
 				#release
 				print "> cloning [%s]" % src
 				safe_copytree(	src , dst % version, skip_dirs=[".svn", "_old"] )
+			
+			print """> cloning daemon control files to /etc/init.d"""
+			path="./project/packages/debian/etc/init.d"
+			shutil.copy("./project/mswitch",         path)
+			shutil.copy("./project/mswitch_control", path)
 			
 			print """> removing /tmp directory"""
 			shutil.rmtree('/tmp/%s_deb' % this_lib, ignore_errors=True)
@@ -89,7 +94,7 @@ class targets(object):
 		#os.system("rm -r /tmp/%s/%s/*.pyc" % (this_lib, this_lib))
 		
 		print "> creating ZIP archive"
-		os.system("cd /tmp/%s && zip -r /tmp/%s-sources-%s.zip %s -x *.svn* *.os *.so *.LOG *.DAT *.settings* *.cproject* *.project* *.pydevproject* *old* *.prefs" % (this_lib, this_lib, version, this_lib))
+		os.system("cd /tmp/%s && zip -r /tmp/%s-sources-%s.zip %s -x *.svn* *.os *.so *.LOG *.DAT *.settings* *.cproject* *.project* *.pydevproject* *old* *.prefs *.pyc" % (this_lib, this_lib, version, this_lib))
 
 	def up(cls):
 		import gcupload as gc
