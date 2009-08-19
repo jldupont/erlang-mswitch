@@ -5,6 +5,12 @@
 	
 	@author Jean-Lou Dupont
 """
+
+# Customize here
+name="mswitch"
+# ^^^^^^^^^^^^^^
+
+
 import os
 import sys
 import subprocess
@@ -12,9 +18,9 @@ from optparse import OptionParser
 
 class Commands(object):
 	
-	cmdStart  = "erl -pa %s -detached -sname mswitch -run mswitch start_link"
-	cmdStop   = "escript mswitch_control -q stop"
-	cmdStatus = "escript mswitch_control -q status"	
+	cmdStart  = "erl -pa %s -detached -sname %(name)s -run %(name)s start_link" % ({"name":globals()["name"]})
+	cmdStop   = "escript %s_control -q stop" % globals()["name"]
+	cmdStatus = "escript %s_control -q status" % globals()["name"]
 	
 	dostart  = "starting daemon"
 	nodaemon = "cannot start daemon"
@@ -32,7 +38,7 @@ class Commands(object):
 	def cmd_start(self, fb):
 		ctx=self._canStart()
 		if fb:
-			print "mswitch: %s [%s]\n" % (ctx["start"], ctx["msg"])
+			print "%s: %s [%s]\n" % (globals()["name"], ctx["start"], ctx["msg"])
 		if not ctx["canstart"]:
 			sys.exit(1)
 
@@ -56,7 +62,7 @@ class Commands(object):
 		ret=proc.returncode
 		ctx=self._getCtx(ret)
 		if fb:
-			print "mswitch: %s [%s]\n" % (ctx["stop"], ctx["msg"])
+			print "%s: %s [%s]\n" % (name, ctx["stop"], ctx["msg"])
 
 	def _getCtx(self, code):
 		ctx=self.codes.get(code, self.codes[1])
@@ -72,8 +78,8 @@ class Commands(object):
 	
 
 def main():
-	usage= """mswitch [-q] [start|stop] 
-"""
+	usage= """%s [-q] [start|stop] 
+""" % name
 	
 	parser=OptionParser(usage)
 	parser.add_option("-q", "--quiet",
@@ -91,7 +97,7 @@ def main():
 	try:
 		getattr(Commands(), "cmd_"+cmd)(feedback)
 	except Exception, e:
-		##print "Exception [%s]\n" % e
+		print "Exception [%s]\n" % e
 		print "! invalid command [%s]\n" % cmd
 
 	
