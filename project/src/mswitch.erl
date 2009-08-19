@@ -15,7 +15,8 @@
 %%
 -export([
 		 start_link/0, start_link/1,
-		 stop/0
+		 stop/0,
+		 daemon_api/1
 		 ]).
 
 %%
@@ -83,7 +84,7 @@ stop() ->
 %% Server = atom()
 %%
 %% ServerPid = pid()
-%% Reason = rpcerror | mswitch_node_down
+%% Reason = rpcerror | mswitch_node_down | invalid_bus | invalid_mailbox
 %%
 subscribe(_, {_}) ->
 	{error, invalid_bus};
@@ -128,7 +129,7 @@ unsubscribe(_, _) ->
 %%
 %% @spec publish(Bus, Message) -> {ServerPid, ok} | {error, Reason}
 %%
-%% Reason = rpcerror | mswitch_node_down
+%% Reason = rpcerror | mswitch_node_down | invalid_bus
 %%
 publish({_}, _) ->
 	{error, invalid_bus};
@@ -393,3 +394,7 @@ sendto(FromNode, To, Message) ->
 			{removed_sub, DestNode}
 	end.
 
+
+%% @private
+daemon_api(status) ->
+	{pid, os:getpid()}.
