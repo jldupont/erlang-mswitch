@@ -53,7 +53,7 @@ start_link(debug) ->
 %% @private
 do_start_link(Params) ->
 	Pid = spawn_link(?MODULE, loop, []),
-	register(?SERVER, Pid),
+	register(mswitch_server, Pid),
 	Pid ! {params, Params},
 	{ok, Pid}.
 
@@ -61,7 +61,7 @@ do_start_link(Params) ->
 %%
 %% @spec stop() -> void()
 stop() ->
-	?SERVER ! stop.
+	mswitch_server ! stop.
 
 
 %% ----------------------           ------------------------------
@@ -233,8 +233,8 @@ dorpc(FromNode, RemoteNode, Message) ->
 	%% If the mswitch daemon is down, this call will fail first and thus
 	%% {error, mswitch_node_down} will be received by the caller
 	case rpc:call(RemoteNode, mswitch, call, [FromNode, Message], ?TIMEOUT) of
-		{badrpc, _Reason} ->
-			%%io:format("dorpc: badrpc: ~p~n", [Reason]),
+		{badrpc, Reason} ->
+			io:format("dorpc: badrpc: ~p~n", [Reason]),
 			{error, mswitch_node_down};
 		
 		Other ->
@@ -254,7 +254,7 @@ dorpc(FromNode, RemoteNode, Message) ->
 call(FromNode, Q) ->
 	%%io:format("call: from[~p] Q[~p]~n", [FromNode, Q]),
 	%%tools:msg("rpc: From[~p] Message[~p]", [FromNode, Q]),
-	?SERVER ! {self(), {FromNode, Q}},
+	mswitch_server ! {self(), {FromNode, Q}},
 	receive
 		{reply, ServerPid, Reply} ->
 			{ServerPid, Reply};
