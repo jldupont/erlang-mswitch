@@ -160,7 +160,7 @@ check_sync() ->
 	dosync(SyncState).
 
 dosync(true) ->
-	Subs=mng:getlocalsubs(),
+	Subs=mng:getsubs(local),
 	io:format("dosync: subs: ~p~n",[Subs]),
 	{Bus, MailBox} = Subs,
 	rpc({subscribe, MailBox, Bus}),
@@ -172,23 +172,23 @@ dosync(_) ->
 
 sync({subscribe, MailBox, Bus, {error, Reason}}) ->
 	put({mswitch, out_of_sync}, true),
-	mng:add_sub_local(Bus, MailBox),
+	mng:add_sub(local, Bus, MailBox),
 	{error, Reason};
 
 
 sync({subscribe, MailBox, Bus, Ret}) ->
 	put({mswitch, out_of_sync}, false),	
-	mng:add_sub_local(Bus, MailBox),
+	mng:add_sub(local, Bus, MailBox),
 	Ret;
 
 sync({unsubscribe, MailBox, Bus, {error, Reason}}) ->
 	put({mswitch, out_of_sync}, true),
-	mng:rem_sub_local(Bus, MailBox),
+	mng:rem_sub(local, Bus, MailBox),
 	{error, Reason};
 
 sync({unsubscribe, MailBox, Bus, Ret}) ->
 	put({mswitch, out_of_sync}, false),
-	mng:rem_sub_local(Bus, MailBox),
+	mng:rem_sub(local, Bus, MailBox),
 	Ret;
 
 sync({publish, {error, Reason}}) ->
@@ -360,8 +360,9 @@ send(FromNode, Subs, Message) ->
 dosend(_FromNode, [], _Message) ->
 	no_more_subs;
 
-dosend(FromNode, [Current|Rest], Message) ->
-	sendto(FromNode, Current, Message),
+dosend(FromNode, [Sub|Rest], Message) ->
+	MB=mng:getsubmailbox(Sub),
+	sendto(FromNode, {Sub, MB}, Message),
 	dosend(FromNode, Rest, Message).
 
 
