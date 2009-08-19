@@ -76,6 +76,7 @@ stop() ->
 %%
 %% @spec subscribe(MailBox, Bus) -> {ServerPid, ok} | {error, Reason}
 %%
+%% Bus = atom() | [atom()]
 %% MailBox = {Module, Function, Server}
 %% Module = atom()
 %% Function = atom()
@@ -84,17 +85,44 @@ stop() ->
 %% ServerPid = pid()
 %% Reason = rpcerror | mswitch_node_down
 %%
-subscribe(MailBox, Bus) ->
-	rpc({subscribe, MailBox, Bus}).
+subscribe(_, {_}) ->
+	{error, invalid_bus};
+
+subscribe(_, Bus) when length(Bus)==0 ->
+	{error, invalid_bus};
+
+subscribe({}, _) ->
+	{error, invalid_mailbox};
+
+subscribe({Module, Function, Server}, Bus) ->
+	MailBox={Module, Function, Server},
+	Ret=rpc({subscribe, MailBox, Bus}),
+	sync({subscribe, MailBox, Bus, Ret});
+
+subscribe(_, _) ->
+	{error, invalid_mailbox}.
 
 %% Unsubscribe from Bus
 %%
 %% @spec unsubscribe(MailBox, Bus) -> {ServerPid, ok} | {error, Reason}
 %% @see subscribe/2
 %%
-unsubscribe(MailBox, Bus) ->
-	rpc({unsubscribe, MailBox, Bus}).
+unsubscribe(_, {_}) ->
+	{error, invalid_bus};
 
+unsubscribe(_, Bus) when length(Bus)==0 ->
+	{error, invalid_bus};
+
+unsubscribe({}, _) ->
+	{error, invalid_mailbox};
+	
+unsubscribe({Module, Function, Server}, Bus) ->
+	MailBox={Module, Function, Server},
+	Ret=rpc({unsubscribe, MailBox, Bus}),
+	sync({unsubscribe, MailBox, Bus, Ret});
+
+unsubscribe(_, _) ->
+	{error, invalid_mailbox}.
 
 %% Publish Message on Bus
 %%
@@ -102,8 +130,16 @@ unsubscribe(MailBox, Bus) ->
 %%
 %% Reason = rpcerror | mswitch_node_down
 %%
+publish({_}, _) ->
+	{error, invalid_bus};
+
+publish(Bus, _) when is_list(Bus) ->
+	{error, invalid_bus};
+
 publish(Bus, Message) ->
-	rpc({publish, Bus, Message}).
+	check_sync(),
+	Ret=rpc({publish, Bus, Message}),
+	sync({publish, Ret}).
 
 
 %% @spec getsubs() -> {ServerPid, {busses, Busses}} | {error, Reason}
@@ -113,6 +149,57 @@ publish(Bus, Message) ->
 %%
 getsubs() ->
 	rpc(getsubs).
+
+
+%% ----------------------              ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% SYNC SUPPORT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------              ------------------------------
+
+check_sync() ->
+	SyncState=get({mswitch, out_of_sync}),
+	dosync(SyncState).
+
+dosync(true) ->
+	Subs=mng:getlocalsubs(),
+	io:format("dosync: subs: ~p~n",[Subs]),
+	{Bus, MailBox} = Subs,
+	rpc({subscribe, MailBox, Bus}),
+	ok;
+
+dosync(_) ->
+	ok.
+
+
+sync({subscribe, MailBox, Bus, {error, Reason}}) ->
+	put({mswitch, out_of_sync}, true),
+	mng:add_sub_local(Bus, MailBox),
+	{error, Reason};
+
+
+sync({subscribe, MailBox, Bus, Ret}) ->
+	put({mswitch, out_of_sync}, false),	
+	mng:add_sub_local(Bus, MailBox),
+	Ret;
+
+sync({unsubscribe, MailBox, Bus, {error, Reason}}) ->
+	put({mswitch, out_of_sync}, true),
+	mng:rem_sub_local(Bus, MailBox),
+	{error, Reason};
+
+sync({unsubscribe, MailBox, Bus, Ret}) ->
+	put({mswitch, out_of_sync}, false),
+	mng:rem_sub_local(Bus, MailBox),
+	Ret;
+
+sync({publish, {error, Reason}}) ->
+	put({mswitch, out_of_sync}, true),
+	{error, Reason};
+
+sync({publish, Ret}) ->
+	put({mswitch, out_of_sync}, false),
+	Ret.
+
+
 
 
 
@@ -125,12 +212,12 @@ getsubs() ->
 rpc(Message) ->
 	%% grab the source node for convenience to the caller
 	From=node(),
-	Rnode=mng:getvar({mswitch, rnode}, undefined),
+	Rnode=tools:getvar({mswitch, rnode}, undefined),
 	rpc(From, Message, Rnode).
 
 %% @private
 rpc(From, Message, undefined) ->
-	Rnode=mng:make_node(?SERVER),
+	Rnode=tools:make_node(?SERVER),
 	put({mswitch, rnode}, Rnode),
 	dorpc(From, Rnode, Message);
 
@@ -164,7 +251,7 @@ dorpc(FromNode, RemoteNode, Message) ->
 
 call(FromNode, Q) ->
 	%%io:format("call: from[~p] Q[~p]~n", [FromNode, Q]),
-	%%mng:msg("rpc: From[~p] Message[~p]", [FromNode, Q]),
+	%%tools:msg("rpc: From[~p] Message[~p]", [FromNode, Q]),
 	?SERVER ! {self(), {FromNode, Q}},
 	receive
 		{reply, ServerPid, Reply} ->
@@ -197,23 +284,27 @@ loop() ->
 
 		%% catch-all: shouldn't occur in normal case
 		Other ->
-			mng:msg("loop: unknown rx: ~p", [Other])
+			error_logger:error_msg("?: loop: unknown [~p]~n", [?MODULE, Other]),
+			tools:msg("loop: unknown rx: ~p", [Other])
 
 	end,
 	loop().
+
+
+%% ----------------------                              ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% API IMPLEMENTATION FUNCTIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------                              ------------------------------
 
 
 %% API - SUBSCRIBE
 %% ===============
 %%
 %% @private
-handle(From, _FromNode, getsubs) ->
-	Busses=mng:getbusses(),
-	reply(From, {busses, Busses});
-
+handle(From, _FromNode, {subscribe, _MailBox, []}) ->
+	reply(From, ok);
 
 handle(From, FromNode, {subscribe, MailBox, Bus}) ->
-	mng:msg("subscribe: node[~p] bus[~p]", [FromNode, Bus]),
+	tools:msg("subscribe: node[~p] bus[~p]", [FromNode, Bus]),
 	mng:add_sub(Bus, {FromNode, MailBox}),
 	reply(From, ok);
 
@@ -221,8 +312,11 @@ handle(From, FromNode, {subscribe, MailBox, Bus}) ->
 %% ==================
 %%
 %% @private
+handle(From, _FromNode, {unsubscribe, _MailBox, []}) ->
+	reply(From, ok);
+
 handle(From, FromNode, {unsubscribe, MailBox, Bus}) ->
-	mng:msg("unsubscribe: node[~p] bus[~p]", [FromNode, Bus]),	
+	tools:msg("unsubscribe: node[~p] bus[~p]", [FromNode, Bus]),	
 	mng:rem_sub(Bus, {FromNode, MailBox}),
 	reply(From, ok);
 
@@ -234,7 +328,16 @@ handle(From, FromNode, {unsubscribe, MailBox, Bus}) ->
 handle(From, FromNode, {publish, Bus, Message}) ->
 	Subscribers=mng:getsubs(Bus),
 	send(FromNode, Subscribers, Message),
-	reply(From, ok).
+	reply(From, ok);
+
+
+%% API - GETSUBS
+%% ===============
+%%
+%% @private
+handle(From, _FromNode, getsubs) ->
+	Busses=mng:getbusses(),
+	reply(From, {busses, Busses}).
 
 
 
@@ -270,7 +373,7 @@ sendto(X, {X, {_,_,_}}, _Message) ->
 sendto(FromNode, To, Message) ->
 	%% extract mailbox parameters
 	{DestNode, {Module, Function, Server}} = To,
-	mng:msg("sendto: Dst[~p] Mod[~p] Func[~p] Msg[~p]", [DestNode, Module, Function, Message]),
+	tools:msg("sendto: Dst[~p] Mod[~p] Func[~p] Msg[~p]", [DestNode, Module, Function, Message]),
 	
 	try rpc:call(DestNode, Module, Function, [{FromNode, Server, Message}]) of
 		

@@ -12,56 +12,69 @@
 %% Exported Functions
 %%
 -export([
+		 getlocalsubs/0,
 		 getsubs/1,
 		 getbusses/0,
-		 getvar/2, getvar/3,
-		 add_to_var/2,
-		 rem_from_var/2,
-		 add_sub/2,
-		 rem_sub/2,
+		 add_sub_local/2, rem_sub_local/2,
+		 add_sub/2, rem_sub/2,
 		 delete_sub/1,
 		 remove_sub_from_busses/2,
 		 clean_bus_table/0,
 		 clean_busses/1
 		 ]).
 
--export([
-		 msg/1, msg/2,
-		 tern/4,
-		 isdebug/0
-		 ]).
-
--export([
-		 extract_host/0, extract_host/1,
-		 make_node/1, make_node/2
-		 ]).
-
 %%
 %% Local Functions
 %%
 
+getlocalsubs() ->
+	tools:getvar({mswitch, local, busses}, {[],{}}).
+	
+
 %% @private
 getsubs(Bus) ->
-	getvar({mswitch, subscribers, Bus}, []).
+	tools:getvar({mswitch, subscribers, Bus}, []).
 
 getbusses() ->
-	getvar({mswitch, subs, self()}, []).
+	tools:getvar({mswitch, subs, self()}, []).
 
 
 
-
-
+%% Add a Subscriber to a Bus
+%% Local state used for sync procedure
+%%
 %% @private
-add_sub(Bus, Sub) ->
-	add_to_var({mswitch, busses}, Bus),
-	add_to_var({mswitch, subscribers, Bus}, Sub),
-	add_to_var({mswitch, subs, Sub}, Bus),
+add_sub_local(Bus, MailBox) ->
+	tools:add_to_var({mswitch, local, busses}, {Bus, MailBox}),
 	ok.
 
+%% Remove a Subscriber from a Bus
+%% Local state used for sync procedure
+%%
 %% @private
-rem_sub(Bus, Sub) ->
-	rem_from_var({mswitch, subscribers, Bus}, Sub),
-	rem_from_var({mswitch, subs, Sub}, Bus),
+rem_sub_local(Bus, MailBox) ->
+	tools:rem_from_var({mswitch, local, busses}, {Bus, MailBox}),
+	ok.
+
+
+
+%% Add a Subscriber to a Bus
+%%
+%% Sub= {Node, MailBox}
+%%
+%% @private
+add_sub(Bus, {Node, MailBox}) ->
+	tools:add_to_var({mswitch, busses}, Bus),
+	tools:add_to_var({mswitch, node, Node}, MailBox),
+	tools:add_to_var({mswitch, subs, Bus}, Node),
+	ok.
+	
+%% Remove a Subscriber from a Bus
+%%
+%% @private
+rem_sub(Bus, Node) ->
+	tools:rem_from_var({mswitch, subs, Bus}, Node),
+	clean_node_table(),
 	clean_bus_table(),
 	ok.
 	
@@ -69,147 +82,89 @@ rem_sub(Bus, Sub) ->
 
 %% Remove a subscriber from the tables
 %% @private
-delete_sub(Sub) ->
-	mng:msg("Deleting sub[~p]", [Sub]),
-	Busses=getvar({mswitch, subs, Sub}, []),
-	remove_sub_from_busses(Busses, Sub).
+delete_sub(Node) ->
+	mng:msg("Deleting sub node[~p]", [Node]),
+	
+	%% delete mailbox
+	erase({mswitch, node, Node}),
+	
+	%% delete from busses
+	Busses=tools:getvar({mswitch, busses}, []),
+	remove_sub_from_busses(Busses, Node),
+	clean_bus_table().
+
 
 
 %% @private
-remove_sub_from_busses([], _Sub) ->
+remove_sub_from_busses([], _) ->
 	ok;
 
-remove_sub_from_busses([H|T], Sub) ->
-	rem_sub(H, Sub),
-	remove_sub_from_busses(T, Sub);
+remove_sub_from_busses([H|T], Node) ->
+	rem_sub(H, Node),
+	remove_sub_from_busses(T, Node);
 
-remove_sub_from_busses(Bus, Sub) ->
-	rem_sub(Bus, Sub),
+remove_sub_from_busses(Bus, Node) ->
+	rem_sub(Bus, Node),
 	ok.
 
 
+%% Go through all busses
+%%  and remove any invalid entry i.e. non-existing node
+%%
+%% @private
+clean_node_table() ->
+	Busses=tools:getvar({mswitch, busses}, []),
+	clean_node_table(Busses).
+
+clean_node_table([]) ->
+	ok;
+
+clean_node_table([Bus|Rest]) ->
+	clean_node_from_bus(Bus),
+	clean_node_table(Rest).
+
+clean_node_from_bus(Bus) ->
+	Nodes=tools:getvar({mswitch, subs, Bus}, []),
+	clean_node_from_bus(Bus, Nodes).
+
+clean_node_from_bus(_, []) ->
+	ok;
+
+clean_node_from_bus(Bus, [Node|Rest]) ->
+	clean_node(Bus, Node),
+	clean_node_from_bus(Bus, Rest).
+
+%% Removes one Node from Bus
+clean_node(Bus, Node) ->
+	tools:rem_from_var({mswitch, subs, Bus}, Node).
+
+	
+	
+
 %% @private
 clean_bus_table() ->
-	Busses=getvar({mswitch, busses}, []),
+	Busses=tools:getvar({mswitch, busses}, []),
 	clean_busses(Busses).
 
 %% @private
 clean_busses([]) ->
-	ok;
+	no_busses;
 
 clean_busses([Bus|T]) ->
-	Subs=getvar({mswitch, subscribers, Bus}, []),
-	clean_bus(Bus, Subs),
+	Nodes=tools:getvar({mswitch, subs, Bus}, []),
+	clean_bus(Bus, Nodes),
 	clean_busses(T).
 
 %% If empty, remove bus from bus table
 %% @private
 clean_bus(Bus, []) ->
-	rem_from_var({mswitch, busses}, Bus);
+	mng:msg("deleting bus: ~p", [Bus]),
+	tools:rem_from_var({mswitch, busses}, Bus),
+	{deleted_bus, Bus};
 
 clean_bus(_Bus, _) ->
-	ok.
+	bus_has_subscribers.
 
 
-
-
-
-%% @private
-tern(Var, Value, True, False) ->
-	case Var of
-		Value -> True;
-		_     -> False
-	end.
-
-
-%% @private
-isdebug() ->
-	Params=mng:getvar(params, []),
-	lists:member("debug", Params)
-	or
-	lists:member(debug, Params).
-
-
-
-%% @spec getvar(VarName, Default) -> Value | Default
-%% Value = atom() | string() | integer() | float()
-getvar(VarName, Default) ->
-	VarValue=get(VarName),
-	getvar(VarName, VarValue, Default).
-
-getvar(VarName, undefined, Default) ->
-	put(VarName, Default),
-	Default;
-
-getvar(_VarName, VarValue, _Default) ->
-	VarValue.
-
-
-%% @private
-add_to_var(VarName, VarValue) ->
-	List=getvar(VarName, []),
-	FilteredList=List--[VarValue],
-	NewList=FilteredList++[VarValue],
-	put(VarName, NewList).
-
-
-%% @private
-rem_from_var(VarName, VarValue) ->
-	List=getvar(VarName, []),
-	FilteredList=List--[VarValue],
-	put(VarName, FilteredList).
-
-
-%% @private
-%% @spec msg(Message) -> _
-msg(Message) ->
-	msg(Message, []).
-
-%% @private
-%% @spec msg(Message, Params) -> _
-msg(Message, Params) ->
-	Debug=isdebug(),
-	domsg(Debug, Message, Params).
-
-%% @private
-domsg(false, _, _) ->
-	ok;
-
-domsg(true, Message, Params) ->
-	Msg="~s:",
-	io:format(Msg++Message++"~n", ["mswitch"]++Params).
-
-
-%% Extracts the "host" part of a node
-%% i.e.  host@node
-%%
-%% @spec extract_host() -> string()
-%%
-extract_host() ->
-	extract_host(node()).
-
-extract_host(Node) when is_atom(Node) ->
-	extract_host(atom_to_list(Node));
-
-extract_host(Node) when is_list(Node) ->
-	Tokens = string:tokens(Node, "@"),
-	lists:last(Tokens).
-	
-
-%% Makes a "short name" node from a name
-%%
-%% @spec make_node(Name) -> string()
-%%
-make_node(Name) ->
-	make_node(Name, node()).
-
-make_node(Name, Node) when is_atom(Name) ->
-	make_node(erlang:atom_to_list(Name), Node);
-
-make_node(Name , Node) when is_list(Name) ->
-	Host=tools:extract_host(Node),
-	PartialName=string:concat(Name, "@"),
-	CompleteName=string:concat(PartialName, Host),
-	erlang:list_to_atom(CompleteName).
 
 

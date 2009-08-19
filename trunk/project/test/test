@@ -1,0 +1,8 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%
+%% @author Jean-Lou Dupont
+%%
+main(_) ->
+	List=[{a,b}, {a,c}, {a,d}],
+	List--[{a,_}].
