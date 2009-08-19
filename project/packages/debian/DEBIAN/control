@@ -1,0 +1,8 @@
+Package: erlang-mswitch
+Version: $version
+Priority: optional
+Architecture: all
+Section: Other
+Maintainer: Jean-Lou Dupont <erlang@jldupont.com>
+Description: Erlang Message Switch daemon
+ .
