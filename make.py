@@ -80,7 +80,7 @@ class targets(object):
 		
 		debian_path = debian_base + "/" + name
 		print "> running dpkg-scanpackages  [%s]" % debian_path
-		os.system("cd .. && dpkg-scanpackages -m dists/stable/main/all /dev/null | gzip -9c > dists/stable/main/all/Packages.gz")
+		os.system("cd .. && dpkg-scanpackages -aall -m dists/stable/main/all /dev/null | gzip -9c > dists/stable/main/all/Packages.gz")
 		
 		print "> removing sources archive build directory"
 		try:    shutil.rmtree("/tmp/%s/%s" % (this_lib, this_lib))
