@@ -74,14 +74,20 @@ class targets(object):
 		print "> renaming debian package: %s" % name
 		shutil.copy('/tmp/%s_deb.deb' % this_lib, path)
 	
-		debian_base="../dists/stable/main/all"
-		print "> copying [%s] to repo in dists/main/all" % path
+		debian_base="../dists/stable/main/binary-i386"
+		print "> copying [%s] to repo in dists/main/binary-i386" % path
 		shutil.copy(path, debian_base)
+
+		debian_base="../dists/stable/main/binary-amd64"
+		print "> copying [%s] to repo in dists/main/binary-amd64" % path
+		shutil.copy(path, debian_base)
+
 		
 		debian_path = debian_base + "/" + name
 		print "> running dpkg-scanpackages  [%s]" % debian_path
-		os.system("cd .. && dpkg-scanpackages -aall -m dists/stable/main/all /dev/null | gzip -9c > dists/stable/main/all/Packages.gz")
-		
+		os.system("cd .. && dpkg-scanpackages -aall -m dists/stable/main/binary-i386 /dev/null | gzip -9c > dists/stable/main/binary-i386/Packages.gz")
+		os.system("cd .. && dpkg-scanpackages -aall -m dists/stable/main/binary-amd64 /dev/null | gzip -9c > dists/stable/main/binary-amd64/Packages.gz")
+				
 		print "> removing sources archive build directory"
 		try:    shutil.rmtree("/tmp/%s/%s" % (this_lib, this_lib))
 		except: pass
