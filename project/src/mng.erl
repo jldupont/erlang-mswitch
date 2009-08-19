@@ -13,6 +13,7 @@
 %%
 -export([
 		 getsubs/1, getsubs/2,
+		 getsubmailbox/1, getsubmailbox/2,
 		 getbusses/0, getbusses/1,
 		 getnodes/0,  getnodes/1,
 		 
@@ -38,6 +39,8 @@
 getsubs(Bus) -> getsubs(daemon, Bus).
 getsubs(Context, Bus) -> tools:getvar({mswitch, Context, subs, Bus}, []).
 
+getsubmailbox(Sub) -> getsubmailbox(daemon, Sub).
+getsubmailbox(Context, Sub) -> tools:getvar({mswitch, Context, node, Sub}).
 
 getbusses() -> getbusses(daemon).
 getbusses(Context) -> tools:getvar({mswitch, Context, busses}, []).
@@ -106,27 +109,60 @@ delete_node(Context, Node) ->
 	erase_node_mailbox(Context, Node),
 	
 	%% delete from all busses
-	Busses=getbusses(Context),
-	remove_node_from_busses(Context, Busses, Node),
+	remove_node_from_busses(Context, Node),
 	clean_bus_table(Context),
 	
 	%% Finally, remove from the 'all nodes' list
-	tools:rem_from_var({mswitch, nodes}, Node).
+	erase_node(Context, Node).
 
 
 
 %% Remove a subscriber Node from all busses
 %% @private
+remove_node_from_busses(Context, Node) ->
+	Busses=getbusses(Context),
+	remove_node_from_busses(Context, Busses, Node).
+
 remove_node_from_busses(_Context, [], _) ->
-	ok;
+	no_more_bus;
 
 remove_node_from_busses(Context, [Bus|T], Node) ->
 	rem_sub(Context, Bus, Node),
 	remove_node_from_busses(Context, T, Node);
 
 remove_node_from_busses(Context, Bus, Node) ->
-	rem_sub(Context, Bus, Node),
-	ok.
+	rem_sub(Context, Bus, Node).
+
+
+	
+%% Go through all busses
+%%  and delete any bus without at least 1 subscriber
+%%
+%% @private
+clean_bus_table(Context) ->
+	Busses=getbusses(Context),
+	clean_busses(Context, Busses).
+
+%% @private
+clean_busses(_, []) ->
+	no_more_bus;
+
+clean_busses(Context, [Bus|T]) ->
+	Nodes=getsubs(Context, Bus),
+	clean_bus(Context, Bus, Nodes),
+	clean_busses(Context, T).
+
+%% If empty, remove bus from bus table
+%% @private
+clean_bus(Context, Bus, []) ->
+	mng:msg("deleting bus: ~p context[~p]", [Bus, Context]),
+	erase_bus(Context, Bus),
+	{deleted_bus, Context, Bus};
+
+clean_bus(_, _, _) ->
+	bus_has_subscriber.
+
+
 
 
 %% Go through all busses
@@ -147,11 +183,11 @@ clean_node_table(Context, [Bus|Rest]) ->
 %% --
 
 clean_node_from_bus(Context, Bus) ->
-	Nodes=getsubs(Context),
-	clean_node_from_bus(Context, Bus, Nodes).
+	Subs=getsubs(Context, Bus),
+	clean_node_from_bus(Context, Bus, Subs).
 
-clean_node_from_bus(_, _, []) ->
-	no_node_on_bus;
+clean_node_from_bus(_, _Bus, []) ->
+	no_sub_on_bus;
 
 clean_node_from_bus(Context, Bus, [Node|Rest]) ->
 	clean_node(Context, Bus, Node),
@@ -161,37 +197,16 @@ clean_node_from_bus(Context, Bus, [Node|Rest]) ->
 
 %% Removes one Node from Bus
 clean_node(Context, Bus, Node) ->
-	erase_sub(Context, Bus, Node).
+	MB=getsubmailbox(Context, Node),
+	clean_node(Context, Bus, Node, MB).
 
+%% a node without a mailbox... clean!
+clean_node(Context, Bus, Node, undefined) ->
+	erase_sub(Context, Bus, Node);
+
+clean_node(_Context, _Bus, _Node, _) ->
+	node_is_ok.
 	
-	
-%% Go through all busses
-%%  and delete any bus without at least 1 subscriber
-%%
-%% @private
-clean_bus_table(Context) ->
-	Busses=getbusses(Context),
-	clean_busses(Context, Busses).
-
-%% @private
-clean_busses(_, []) ->
-	no_busses;
-
-clean_busses(Context, [Bus|T]) ->
-	Nodes=getsubs(Context, Bus),
-	clean_bus(Context, Bus, Nodes),
-	clean_busses(Context, T).
-
-%% If empty, remove bus from bus table
-%% @private
-clean_bus(Context, Bus, []) ->
-	mng:msg("deleting bus: ~p context[~p]", [Bus, Context]),
-	erase_bus(Context, Bus),
-	{deleted_bus, Context, Bus};
-
-clean_bus(_, _, _) ->
-	bus_has_subscribers.
-
 
 
 
