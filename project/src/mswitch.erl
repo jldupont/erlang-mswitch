@@ -175,7 +175,6 @@ sync({subscribe, MailBox, Bus, {error, Reason}}) ->
 	mng:add_sub(local, Bus, MailBox),
 	{error, Reason};
 
-
 sync({subscribe, MailBox, Bus, Ret}) ->
 	put({mswitch, out_of_sync}, false),	
 	mng:add_sub(local, Bus, MailBox),
