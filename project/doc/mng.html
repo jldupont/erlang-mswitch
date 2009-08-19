@@ -1,0 +1,162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module mng</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module mng</h1>
+<ul class="index"><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_sub-3">add_sub/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#delete_node-2">delete_node/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#erase_bus-1">erase_bus/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#erase_bus-2">erase_bus/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#erase_node-1">erase_node/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#erase_node-2">erase_node/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#erase_node_mailbox-1">erase_node_mailbox/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#erase_node_mailbox-2">erase_node_mailbox/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#erase_sub-2">erase_sub/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#erase_sub-3">erase_sub/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#find_node_subscriptions-1">find_node_subscriptions/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#find_node_subscriptions-2">find_node_subscriptions/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#getbusses-0">getbusses/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#getbusses-1">getbusses/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#getnodes-0">getnodes/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#getnodes-1">getnodes/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#getsubmailbox-1">getsubmailbox/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#getsubmailbox-2">getsubmailbox/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#getsubs-2">getsubs/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#is_subscribed-2">is_subscribed/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#is_subscribed-3">is_subscribed/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#rem_sub-3">rem_sub/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#test-0">test/0</a></td><td></td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="add_sub-3">add_sub/3</a></h3>
+<div class="spec">
+<p><tt>add_sub(Bus, Busses, X3) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="delete_node-2">delete_node/2</a></h3>
+<div class="spec">
+<p><tt>delete_node(Context, Node) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="erase_bus-1">erase_bus/1</a></h3>
+<div class="spec">
+<p><tt>erase_bus(Bus) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="erase_bus-2">erase_bus/2</a></h3>
+<div class="spec">
+<p><tt>erase_bus(Context, Bus) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="erase_node-1">erase_node/1</a></h3>
+<div class="spec">
+<p><tt>erase_node(Node) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="erase_node-2">erase_node/2</a></h3>
+<div class="spec">
+<p><tt>erase_node(Context, Node) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="erase_node_mailbox-1">erase_node_mailbox/1</a></h3>
+<div class="spec">
+<p><tt>erase_node_mailbox(Node) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="erase_node_mailbox-2">erase_node_mailbox/2</a></h3>
+<div class="spec">
+<p><tt>erase_node_mailbox(Context, Node) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="erase_sub-2">erase_sub/2</a></h3>
+<div class="spec">
+<p><tt>erase_sub(Bus, Sub) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="erase_sub-3">erase_sub/3</a></h3>
+<div class="spec">
+<p><tt>erase_sub(Context, Bus, Sub) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="find_node_subscriptions-1">find_node_subscriptions/1</a></h3>
+<div class="spec">
+<p><tt>find_node_subscriptions(Node) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="find_node_subscriptions-2">find_node_subscriptions/2</a></h3>
+<div class="spec">
+<p><tt>find_node_subscriptions(Context, Node) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="getbusses-0">getbusses/0</a></h3>
+<div class="spec">
+<p><tt>getbusses() -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="getbusses-1">getbusses/1</a></h3>
+<div class="spec">
+<p><tt>getbusses(Context) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="getnodes-0">getnodes/0</a></h3>
+<div class="spec">
+<p><tt>getnodes() -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="getnodes-1">getnodes/1</a></h3>
+<div class="spec">
+<p><tt>getnodes(Context) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="getsubmailbox-1">getsubmailbox/1</a></h3>
+<div class="spec">
+<p><tt>getsubmailbox(Sub) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="getsubmailbox-2">getsubmailbox/2</a></h3>
+<div class="spec">
+<p><tt>getsubmailbox(Context, Sub) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="getsubs-2">getsubs/2</a></h3>
+<div class="spec">
+<p><tt>getsubs(Context, Bus) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="is_subscribed-2">is_subscribed/2</a></h3>
+<div class="spec">
+<p><tt>is_subscribed(Bus, Node) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="is_subscribed-3">is_subscribed/3</a></h3>
+<div class="spec">
+<p><tt>is_subscribed(Context, Bus, Node) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="rem_sub-3">rem_sub/3</a></h3>
+<div class="spec">
+<p><tt>rem_sub(Context, Bus, Node) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="test-0">test/0</a></h3>
+<div class="spec">
+<p><tt>test() -&gt; any()</tt></p>
+</div>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Aug 19 2009, 13:09:00.</i></p>
+</body>
+</html>

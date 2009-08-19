@@ -37,7 +37,9 @@ isdebug() ->
 	lists:member(debug, Params).
 
 
-
+%% Retrieves the Value of a VarName in the process dictionary
+%% and returns Default is not found.
+%%
 %% @spec getvar(VarName, Default) -> Value | Default
 %% Value = atom() | string() | integer() | float()
 getvar(VarName, Default) ->
@@ -80,12 +82,12 @@ rem_from_var(VarName, VarValue) ->
 
 
 %% @private
-%% @spec msg(Message) -> _
+%% @spec msg(Message) -> void()
 msg(Message) ->
 	msg(Message, []).
 
 %% @private
-%% @spec msg(Message, Params) -> _
+%% @spec msg(Message, Params) -> void()
 msg(Message, Params) ->
 	Debug=isdebug(),
 	domsg(Debug, Message, Params).

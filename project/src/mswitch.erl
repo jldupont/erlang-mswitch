@@ -249,6 +249,7 @@ dorpc(FromNode, RemoteNode, Message) ->
 %% ----------------------                 ------------------------------
 
 
+%% @private
 call(FromNode, Q) ->
 	%%io:format("call: from[~p] Q[~p]~n", [FromNode, Q]),
 	%%tools:msg("rpc: From[~p] Message[~p]", [FromNode, Q]),
