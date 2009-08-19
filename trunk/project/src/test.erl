@@ -3,6 +3,7 @@
 %%
 %% NOTE: start with a unique short-name for
 %%       each instance e.g. erl -sname test1
+%%                          erl -sname test2
 -module(test).
 
 -compile(export_all).

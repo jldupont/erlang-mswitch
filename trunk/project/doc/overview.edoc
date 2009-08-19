@@ -1,36 +1,75 @@
 ** this is the overview.edoc file for the application 'erlang-mswitch'
 
 @author Jean-Lou Dupont
-@title  Erlang-mswitch Documentation
+@title  mswitch documentation
 
 @doc    
 
-The library implements a Twitter client by spawning a process and waiting for request through the {@link twitter:req/5. <em>twitter:req/5</em>} function.
-Once a request is issued, a response message will be sent to the caller.
+<b>mswitch</b> consists of a erlang daemon serving inter-node messages through a publish/subscribe API.
+
+== Daemon management ==
+
+The mswitch daemon can be managed using the command-line script 'mswitch'.
+
+	```
+		mswitch start
+		mswitch stop
+	'''
+
+== API ==
+The API consists of the following functions:
+
+<ul>
+ <li>subscribe(Bus, Mailbox)</li>
+ <li>unsubscribe(Bus)</li>
+ <li>publish(Bus, Message)</li>
+</ul>
+
+== Resiliency ==
+The subscription details of each subscriber is kept local to each subscriber. This is transparent to the API user.
+When the 'mswitch' daemon restarts, the subscription details of each subscriber is used to automatically re-subscribe each one. 
 
 == Usage == 
 
+To use the services of mswitch with Erlang, the mswitch library must be installed locally.
+This step is normally taken care of when installing from the Debian repository associated with the project.
+
+=== Subscribing ===
+
+To subscribe to a 'bus':
+
 	```
-		twitter:start(),
-		twitter:req({self(), from_twitter}, ...),
-		...
+		mswitch:subscribe(Bus, Mailbox)
 	'''
-
-In your application code, be prepared to receive response messages:
-
-	```
-		receive
-			{from_twitter, response ...
-	'''
-
-== Twitter Methods supported ==
-The following methods are currently supported:
-
+	where:
 	<ul>
- 		<li>users.show</li>
- 		<li>statuses.user_timeline</li>
- 		<li>statuses.update</li>
- 	</ul>
- 	
-More methods can easily supported; functions acting as ''pattern matchers'' for the desired Twitter methods can be added to the code.
-I currently only have need for the aforementioned. 
+	 <li>'Bus' is any valid Erlang term (atom, string)</li>
+	 <li>'Mailbox' consists of a tuple {Module, Function, Server}</li>
+	</ul>
+	
+	The 'Mailbox' is a Module:Function reachable by the Erlang emulator and 'Server' consists of
+	a registered server process.
+	
+=== Sending ===
+
+To send a Message on a Bus,
+
+	```
+		mswitch:publish(Bus, Message)
+	'''
+	where 'Message' is any valid Erlang term.
+	
+=== Receiving ===
+
+Subscribers receive Message through their registered server process using a small 'thunk':
+
+	```
+		inbox({FromNode, Server, Message}) ->
+			Server ! {FromNode, Message}.
+	'''
+
+	When a subscriber wishes to receive messages from 'Bus', a 'Mailbox' of the form:
+	```
+		Mailbox = {Module, inbox, Server}
+	'''
+	can be used.
