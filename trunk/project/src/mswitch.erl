@@ -404,7 +404,8 @@ daemon_api(status) ->
 
 set_code_path() ->
 	Dir=filename:dirname(?FILE),
-	code:add_patha(Dir).
+	EbinDir=filename:dirname(Dir),
+	code:add_patha(EbinDir++"/ebin").
 
 
 	
