@@ -31,7 +31,7 @@ tern(Var, Value, True, False) ->
 
 %% @private
 isdebug() ->
-	Params=mng:getvar(params, []),
+	Params=getvar(params, []),
 	lists:member("debug", Params)
 	or
 	lists:member(debug, Params).
@@ -127,7 +127,7 @@ make_node(Name, Node) when is_atom(Name) ->
 	make_node(erlang:atom_to_list(Name), Node);
 
 make_node(Name , Node) when is_list(Name) ->
-	Host=tools:extract_host(Node),
+	Host=extract_host(Node),
 	PartialName=string:concat(Name, "@"),
 	CompleteName=string:concat(PartialName, Host),
 	erlang:list_to_atom(CompleteName).

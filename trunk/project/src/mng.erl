@@ -25,7 +25,10 @@
 		 add_sub/2,  add_sub/3,
 		 rem_sub/2,  rem_sub/3,
 		 
-		 delete_node/1, delete_node/2
+		 delete_node/1, delete_node/2,
+		 
+		 find_node_subscriptions/1, find_node_subscriptions/2,
+		 is_subscribed/2, is_subscribed/3
 		 ]).
 
 -export([
@@ -40,7 +43,7 @@ getsubs(Bus) -> getsubs(daemon, Bus).
 getsubs(Context, Bus) -> tools:getvar({mswitch, Context, subs, Bus}, []).
 
 getsubmailbox(Sub) -> getsubmailbox(daemon, Sub).
-getsubmailbox(Context, Sub) -> tools:getvar({mswitch, Context, node, Sub}).
+getsubmailbox(Context, Sub) -> tools:getvar({mswitch, Context, node, Sub}, undefined).
 
 getbusses() -> getbusses(daemon).
 getbusses(Context) -> tools:getvar({mswitch, Context, busses}, []).
@@ -70,6 +73,14 @@ erase_node(Context, Node) -> tools:rem_from_var({mswitch, Context, nodes}, Node)
 add_sub(Bus, {Node, MailBox}) ->
 	add_sub(daemon, Bus, {Node, MailBox}).
 
+add_sub(_Bus, [], _) ->
+	ok;
+
+add_sub(Context, Busses, {Node, MailBox}) when is_list(Busses) ->
+	[Current|Rest] = Busses,
+	add_sub(Context, Current, {Node, MailBox}),
+	add_sub(Context, Rest, {Node, MailBox});
+
 add_sub(Context, Bus, {Node, MailBox}) ->
 	tools:add_to_var({mswitch, Context, nodes}, Node),
 	tools:add_to_var({mswitch, Context, busses}, Bus),
@@ -98,7 +109,7 @@ delete_node(Node) ->
 	delete_node(daemon, Node).
 	
 delete_node(Context, Node) ->
-	mng:msg("Deleting context[~p] node[~p]", [Context, Node]),
+	tools:msg("Deleting context[~p] node[~p]", [Context, Node]),
 	
 	%% delete associated mailbox
 	erase_node_mailbox(Context, Node),
@@ -150,7 +161,7 @@ clean_busses(Context, [Bus|T]) ->
 %% If empty, remove bus from bus table
 %% @private
 clean_bus(Context, Bus, []) ->
-	mng:msg("deleting bus: ~p context[~p]", [Bus, Context]),
+	tools:msg("deleting bus: ~p context[~p]", [Bus, Context]),
 	erase_bus(Context, Bus),
 	{deleted_bus, Context, Bus};
 
@@ -203,14 +214,6 @@ clean_node(_Context, _Bus, _Node, _) ->
 	node_is_ok.
 	
 
-is_subscribed(Bus, Node) ->
-	is_subscribed(daemon, Bus, Node).
-	
-is_subscribed(Context, Bus, Node) ->
-	Subs=getsubs(Context, Bus),
-	lists:member(Node, Subs).
-
-
 
 find_node_subscriptions(Node) ->
 	find_node_subscriptions(daemon, Node).	
@@ -219,7 +222,7 @@ find_node_subscriptions(Context, Node) ->
 	Busses=getbusses(Context),
 	find_node_subscriptions(Context, Node, Busses, []).
 
-find_node_subscriptions(Context, Node, [], Acc) ->
+find_node_subscriptions(_Context, _Node, [], Acc) ->
 	Acc;
 
 find_node_subscriptions(Context, Node, [Bus|Rest], Acc) ->
@@ -232,7 +235,14 @@ find_node_subscriptions(Context, Node, [Bus|Rest], Acc) ->
 	find_node_subscriptions(Context, Node, Rest, NewAcc).
 
 	
+
+is_subscribed(Bus, Node) ->
+	is_subscribed(daemon, Bus, Node).
 	
+is_subscribed(Context, Bus, Node) ->
+	Subs=getsubs(Context, Bus),
+	lists:member(Node, Subs).
+
 
 
 
