@@ -5,6 +5,10 @@
 %% @author Jean-Lou Dupont
 %%
 
+%% Customize here
+name() -> "mswitch".
+%% ^^^^^^^^^^^^^^^^^
+
 code_ok()               -> 0.
 code_error()            -> 1.
 code_daemon_found()     -> 2.
@@ -13,12 +17,12 @@ code_lib_not_found()    -> 4.
 code_node_not_found()   -> 5.
 
 
-err_lib()    -> "erlang-mswitch not found".
+err_lib()    -> name()++" library not found".
 err_daemon() -> "daemon not found".
-err_node()   -> "mswitch node not found".
+err_node()   -> name()++" node not found".
 
 msg_pid()    -> "daemon found, pid: ".
-msg_usage()  -> "usage: mswitch_control [-q] [status|stop]".
+msg_usage()  -> "usage: "++name()++"_control [-q] [status|stop]".
 msg_kill()   -> "stop command sent".
 
 
@@ -105,7 +109,7 @@ getstatus() ->
 msg(Feedback, Code, Msg) ->
 	case Feedback of 
 		verbose ->
-			io:format("mswitch_control: ~s~n", [Msg]);
+			io:format(name()++"_control: ~s~n", [Msg]);
 		_ ->
 			ok
 	end,	
@@ -131,9 +135,10 @@ rpc(Command) ->
 
 
 dorpc(Message) ->
-	Node=tools:make_node(mswitch),
+	Atom=erlang:list_to_atom(name()),
+	Node=tools:make_node(Atom),
 	
-	case rpc:call(Node, mswitch, daemon_api, [Message], 2000) of
+	case rpc:call(Node, Atom, daemon_api, [Message], 2000) of
 		{badrpc, _Reason} ->
 			rpcerror;
 		
