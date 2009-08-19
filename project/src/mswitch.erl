@@ -160,10 +160,10 @@ check_sync() ->
 	dosync(SyncState).
 
 dosync(true) ->
-	Subs=mng:getsubs(local),
-	io:format("dosync: subs: ~p~n",[Subs]),
-	{Bus, MailBox} = Subs,
-	rpc({subscribe, MailBox, Bus}),
+	Busses=mng:find_node_subscriptions(local, node()),
+	io:format("dosync: busses: ~p~n",[Busses]),
+	MB=mng:getsubmailbox(local, node()),
+	rpc({subscribe, MB, Busses}),
 	ok;
 
 dosync(_) ->
@@ -171,13 +171,14 @@ dosync(_) ->
 
 
 sync({subscribe, MailBox, Bus, {error, Reason}}) ->
+	tools:msg("sync: MB[~p] Bus[~p]~n", [MailBox, Bus]),
 	put({mswitch, out_of_sync}, true),
-	mng:add_sub(local, Bus, MailBox),
+	mng:add_sub(local, Bus, {node(),MailBox}),
 	{error, Reason};
 
 sync({subscribe, MailBox, Bus, Ret}) ->
-	put({mswitch, out_of_sync}, false),	
-	mng:add_sub(local, Bus, MailBox),
+	put({mswitch, out_of_sync}, false),
+	mng:add_sub(local, Bus, {node(),MailBox}),
 	Ret;
 
 sync({unsubscribe, MailBox, Bus, {error, Reason}}) ->
@@ -360,7 +361,7 @@ dosend(_FromNode, [], _Message) ->
 	no_more_subs;
 
 dosend(FromNode, [Sub|Rest], Message) ->
-	MB=mng:getsubmailbox(Sub),
+	[MB]=mng:getsubmailbox(Sub),
 	sendto(FromNode, {Sub, MB}, Message),
 	dosend(FromNode, Rest, Message).
 
@@ -379,15 +380,15 @@ sendto(FromNode, To, Message) ->
 		
 		%% Subscriber probably disappeared...
 		{badrpc, _Reason} ->
-			mng:delete_sub(To),
-			{removed_sub, To};
+			mng:delete_node(DestNode),
+			{removed_sub, DestNode};
 	
 		Other ->
 			Other			
 				 
 	catch 
 		_:_ ->
-			mng:delete_sub(To),
-			{removed_sub, To}
+			mng:delete_node(DestNode),
+			{removed_sub, DestNode}
 	end.
 

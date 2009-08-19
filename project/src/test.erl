@@ -70,15 +70,13 @@ loop() ->
 	loop().
 
 
-subscribe(Server, []) ->
+subscribe(_Server, []) ->
 	done;
 
 subscribe(Server, [Bus|Rest]) ->
 	subscribe(Server, Rest),
-	mswitch:subscribe({test, inbox, Server}, Bus);
-
-subscribe(Server, Bus) ->
-	mswitch:subscribe(Bus).
+	io:format("test: subscribe[~p]~n",[Bus]),
+	mswitch:subscribe({test, inbox, Server}, Bus).
 
 
 add(undefined, Value) ->
