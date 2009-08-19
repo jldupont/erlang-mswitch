@@ -48,13 +48,17 @@ loop() ->
 		stop ->
 			exit(ok);
 		
+		{_From, {count, Count}} ->
+			io:format("Rx: ~p~n", [Count]);
+		
 		Other ->
 			io:format("~p: unhandled message [~p]~n", [?MODULE, Other])
 		
 	after ?TIMEOUT ->
 
 		Count=pvadd(count,1),
-		mswitch:publish(notif, "Count: "++erlang:integer_to_list(Count))
+		Ret=mswitch:publish(notif, {count, "Count: "++erlang:integer_to_list(Count)}),
+		io:format("Ret: ~p~n", [Ret])
 		
 	end,
 	loop().
