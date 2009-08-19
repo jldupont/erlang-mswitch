@@ -33,7 +33,8 @@
 %%
 -export([
 		 loop/0, call/2,
-		 handle/3, send/3, reply/2
+		 handle/3, send/3, reply/2,
+		 set_code_path/0
 		 ]).
 %% ----------------------                 ------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%% MANAGEMENT API  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -52,6 +53,7 @@ start_link(debug) ->
 
 %% @private
 do_start_link(Params) ->
+	set_code_path(),
 	Pid = spawn_link(?MODULE, loop, []),
 	register(mswitch_server, Pid),
 	Pid ! {params, Params},
@@ -398,3 +400,11 @@ sendto(FromNode, To, Message) ->
 %% @private
 daemon_api(status) ->
 	{pid, os:getpid()}.
+
+
+set_code_path() ->
+	Dir=filename:dirname(?FILE),
+	code:add_patha(Dir).
+
+
+	
