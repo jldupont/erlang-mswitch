@@ -1,2 +1,4 @@
 #!/bin/sh
-update-rc.d mswitch start 20 2 3 4 5 . stop 0 1 6 .
+# start 20 2 3 4 5 . stop 0 1 6 .
+
+update-rc.d mswitch
