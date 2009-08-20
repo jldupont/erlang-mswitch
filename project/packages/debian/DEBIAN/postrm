@@ -59,12 +59,12 @@ if (command == 'remove') or (command == 'purge'):
 			]
 	
 	for link in slinks:
-	try:
-		os.remove( link )
-		print "%s: removed symlink [%s]" % (this_lib, link)
-		
-	except Exception,e:
-		# symlink not there? no worries
-		pass
+		try:
+			os.remove( link )
+			print "%s: removed symlink [%s]" % (this_lib, link)
+			
+		except Exception,e:
+			# symlink not there? no worries
+			pass
 	
 	sys.exit(code)

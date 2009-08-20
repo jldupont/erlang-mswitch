@@ -65,7 +65,7 @@ for link in slinks:
 		os.chmod(src, 0700)
 		
 	except Exception,e:
-		print "Exception: %s\n" % str(e)
+		#print "Exception: %s\n" % str(e)
 		# symlink already exists? no worries
 		pass
 	
