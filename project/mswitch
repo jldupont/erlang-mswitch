@@ -27,12 +27,14 @@ class Commands(object):
 	nostop   = "cannot stop daemon"
 	canstop  = "ok"
 	
-	codes = {	0: {"msg":"ok",                "canstart": True,  "stop":canstop, "start":dostart  },
-				1: {"msg":"unspecified error", "canstart": True,  "stop":nostop,  "start":dostart  }, 
-				2: {"msg":"daemon found",      "canstart": False, "stop":nostop,  "start":nodaemon }, 
-				3: {"msg":"daemon not found",  "canstart": True,  "stop":nostop,  "start":dostart  }, 
-				4: {"msg":"library not found", "canstart": False, "stop":nostop,  "start":nodaemon },
-				5: {"msg":"node not found",    "canstart": True,  "stop":nostop,  "start":dostart  },
+	# "status" field according to LSB-Core-generic specification
+	
+	codes = {	0: {"msg":"ok",                "canstart": True,  "stop":canstop, "start":dostart,  "status":4  },
+				1: {"msg":"unspecified error", "canstart": True,  "stop":nostop,  "start":dostart,  "status":4  }, 
+				2: {"msg":"daemon found",      "canstart": False, "stop":nostop,  "start":nodaemon, "status":0 }, 
+				3: {"msg":"daemon not found",  "canstart": True,  "stop":nostop,  "start":dostart,  "status":3  }, 
+				4: {"msg":"library not found", "canstart": False, "stop":nostop,  "start":nodaemon, "status":4 },
+				5: {"msg":"node not found",    "canstart": True,  "stop":nostop,  "start":dostart,  "status":4  },
 			}
 	
 	def __init__(self):
@@ -50,6 +52,20 @@ class Commands(object):
 		
 	def cmd_stop(self, feedback):
 		self._dostop(feedback)
+	
+	def cmd_restart(self, feedback):
+		self.cmd_stop(feedback)
+		self.cmd_start(feedback)
+		
+	def cmd_reload(self, feedback):
+		sys.exit(3) #unimplemented feature (see LSBInitScript documentation)
+		
+	def cmd_status(self, feedback):
+		ctx=self._canStart()
+		sys.exit(ctx["status"])
+
+	
+	## =-----------------------------------------------------=- ##
 	
 	def _dostart(self):
 	
