@@ -336,11 +336,11 @@ handle(From, FromNode, {publish, Bus, Message}) ->
 	reply(From, ok);
 
 
-%% API - GETSUBS
+%% API - GETBUSSES
 %% ===============
 %%
 %% @private
-handle(From, _FromNode, getsubs) ->
+handle(From, _FromNode, getbusses) ->
 	Busses=mng:getbusses(),
 	reply(From, {busses, Busses}).
 
@@ -398,9 +398,28 @@ sendto(FromNode, To, Message) ->
 	end.
 
 
+
+%% ----------------------            ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% DAEMON API %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------            ------------------------------
+
+
 %% @private
 daemon_api(status) ->
-	{pid, os:getpid()}.
+	{pid, os:getpid()};
+
+daemon_api(getbusses) ->
+	call(node(), getbusses);	
+
+daemon_api(_) ->
+	{error, invalid_command}.
+
+
+
+%% ----------------------         ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% HELPERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------         ------------------------------
+
 
 %% Prioritize mswitch's code path
 %%
