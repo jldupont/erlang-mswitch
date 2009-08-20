@@ -27,8 +27,11 @@ from optparse import OptionParser
 class Commands(object):
 	
 	cmdStart  = "erl -pa %(cmd)s -detached -sname %(name)s -run %(name)s start_link"
-	cmdStop   = "escript %s_control -q stop"
-	cmdStatus = "escript %s_control -q status"
+	
+	#probably need to put the "escript" for development purpose...
+	#windows shared drive do not play well with file mod flags...
+	cmdStop   = "%s_control -q stop"
+	cmdStatus = "%s_control -q status"
 	
 	dostart  = "starting daemon"
 	nodaemon = "cannot start daemon"
