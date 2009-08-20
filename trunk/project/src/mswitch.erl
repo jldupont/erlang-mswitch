@@ -403,10 +403,10 @@ daemon_api(status) ->
 
 
 set_code_path() ->
-	Dir=filename:dirname(?FILE),
-	EbinDir=filename:dirname(Dir),
-	io:format("dir[~p] ebin_dir: ~p~n", [Dir, EbinDir]),
-	code:add_patha(EbinDir++"/ebin").
+	AbsPath=code:which(mswitch),
+	Dir=filename:dirname(AbsPath),
+	io:format("dir[~p]~n", [Dir]),
+	code:add_patha(Dir).
 
 
 	
