@@ -56,6 +56,7 @@ do_start_link(Params) ->
 	set_code_path(),
 	Pid = spawn_link(?MODULE, loop, []),
 	register(mswitch_server, Pid),
+	global:register_name(mswitch, Pid),
 	Pid ! {params, Params},
 	{ok, Pid}.
 
