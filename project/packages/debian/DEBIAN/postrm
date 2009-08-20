@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 """
 	@author: Jean-Lou Dupont
 	
@@ -31,7 +30,6 @@
 		
 	
 """
-
 import os
 import sys
 import glob
@@ -53,6 +51,20 @@ print "%s: postrm: cmd[%s] version[%s]" % (this_lib, command, version)
 if (command == 'remove') or (command == 'purge'):
 
 	proc = subprocess.Popen("update-rc.d mswitch remove", shell=True)
-	proc.wait()
+	code=  proc.wait()
 	
-	sys.exit(0)
+	# remove symlinks
+	slinks = [ "src":"/usr/bin/mswitch",
+			   "src":"/usr/bin/mswitch_control",
+			]
+	
+	for link in slinks:
+	try:
+		os.remove( link )
+		print "%s: removed symlink [%s]" % (this_lib, link)
+		
+	except Exception,e:
+		# symlink not there? no worries
+		pass
+	
+	sys.exit(code)
