@@ -3,6 +3,14 @@
 %%
 %% @author Jean-Lou Dupont
 %%
+-mode(compile).
+
 main(_) ->
-	List=[{a,b}, {a,c}, {a,d}],
-	List--[{a,_}].
+	Fun=test,
+	apply(Fun, []).
+	
+
+
+test() ->
+	io:format("test!~n").
+	

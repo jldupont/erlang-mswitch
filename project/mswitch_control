@@ -9,6 +9,8 @@
 name() -> "mswitch".
 %% ^^^^^^^^^^^^^^^^^
 
+cmds() -> "[status|stop|busses]".
+
 code_ok()               -> 0.
 code_error()            -> 1.
 code_daemon_found()     -> 2.
@@ -17,19 +19,23 @@ code_lib_not_found()    -> 4.
 code_node_not_found()   -> 5.
 
 
-err_lib()    -> name()++" library not found".
-err_daemon() -> "daemon not found".
-err_node()   -> name()++" node not found".
+err_lib()      -> name()++" library not found".
+err_daemon()   -> "daemon not found".
+err_node()     -> name()++" node not found".
+err_response() -> "invalid response.".
+
 
 msg_pid()    -> "daemon found, pid: ".
-msg_usage()  -> "usage: "++name()++"_control [-q] [status|stop]".
+msg_usage()  -> "usage: "++name()++"_control [-q] "++cmds().
 msg_kill()   -> "stop command sent".
-
+msg_busses() -> "busses: ".
 
 main(["-q", "stop"]) -> 	run(quiet,   stop);
 main(["-q", "status"]) ->	run(quiet, 	 status);
+main(["-q", "busses"]) ->	run(quiet, 	 busses);
 main(["stop"]) ->			run(verbose, stop);
 main(["status"]) ->			run(verbose, status);
+main(["busses"]) ->			run(verbose, busses);
 	
 main([]) ->
 	msg(verbose, code_ok(), msg_usage()),
@@ -41,7 +47,6 @@ main([_Cmd]) ->
 
 
 run(Feedback, stop) ->
-
 	add_cwd(),
 	
 	case getstatus() of
@@ -59,7 +64,13 @@ run(Feedback, stop) ->
 			msg(Feedback, code_node_not_found(), err_node())		
 	end;		
 	
-
+	
+run(Feedback, busses) ->
+	Busses=handle(Feedback, dorpc(busses, getbusses), busses),
+	msg(Feedback, code_ok(), msg_busses(), Busses);
+	
+	
+	
 run(Feedback, status) ->
 
 	%%for development
@@ -81,6 +92,29 @@ run(Feedback, status) ->
 	end.
 	
 
+handle(Feedback, Code, Context) ->
+	%%for development
+	add_cwd(),
+	
+	case Code of
+		daemon_not_found ->
+			msg(Feedback, code_daemon_found(), err_daemon());
+					
+		{error, lib_not_found} ->
+			msg(Feedback, code_lib_not_found(), err_lib());
+			
+		{error, node_not_found} ->
+			msg(Feedback, code_node_not_found(), err_node());
+	
+		{Context, Message} ->
+			Message;
+			
+		_ ->
+			msg(Feedback, code_error(), err_response())
+	end.
+
+
+
 add_cwd() ->
 	{ok,Cwd}=file:get_cwd(),
 	Cp=Cwd++"/ebin",
@@ -88,6 +122,7 @@ add_cwd() ->
 
 
 getstatus() ->
+
 	try
 		Status=rpc(status),
 		case Status of
@@ -122,6 +157,25 @@ msg(Feedback, Code, Msg1, Msg2) ->
 %%%%%%%%%%%%%%	
 %% RPC related
 %%%%%%%%%%%%%%
+
+dorpc(Context, Command) ->
+	try
+		Reply=rpc(Command),
+		case Reply of
+			rpcerror ->
+				daemon_not_found;
+				
+			{Context, Message} ->
+				Message	
+		end
+	catch
+		error:undef ->
+			{error, lib_not_found};
+		
+		_X:_Y ->
+			{error, node_not_found}
+	end.
+
 	
 rpc(Command) ->
 	case dorpc(Command) of
