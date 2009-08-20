@@ -84,3 +84,10 @@ Subscribers receive Message through their registered server process using a smal
    <li>Added the default "system" bus.</li>
    <li>Added 'nodes' command to mswitch_control</li>
   </ul>
+  
+  ===0.3===
+  <ul>
+   <li>Factored-in module hierarchy</li>
+   <li>Added 'mswitch_sniffer' command-line utility</li>   
+  </ul>
+  

@@ -1,7 +1,7 @@
 %% Author: Jean-Lou Dupont
 %% Created: 2009-08-19
 %% Description: Common function tools
--module(tools).
+-module(mswitch_tools).
 
 %%
 %% Include files

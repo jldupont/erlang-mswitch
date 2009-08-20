@@ -1,0 +1,4 @@
+#!/bin/sh
+echo "Usage:   mswitch_sniffer [Bus] | [Busses]"
+echo "Example: mswitch_sniffer system notif event"
+erl -pa ./ebin -sname mswitch_sniffer -s mswitch_sniffer start $@
