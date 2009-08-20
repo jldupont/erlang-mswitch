@@ -409,7 +409,8 @@ daemon_api(status) ->
 	{pid, os:getpid()};
 
 daemon_api(getbusses) ->
-	call(node(), getbusses);	
+	{_, Message} = call(node(), getbusses),
+	Message;
 
 daemon_api(_) ->
 	{error, invalid_command}.

@@ -25,7 +25,7 @@
 %% API Functions
 %%
 go() ->
-	start(test, [notif]).
+	start(test, [notif, event]).
 
 start(Server, Busses) ->
 	Pid=spawn_link(?MODULE, loop, []),
