@@ -401,12 +401,11 @@ sendto(FromNode, To, Message) ->
 daemon_api(status) ->
 	{pid, os:getpid()}.
 
-
+%% Prioritize mswitch's code path
+%%
+%% @private
 set_code_path() ->
 	AbsPath=code:which(mswitch),
 	Dir=filename:dirname(AbsPath),
-	io:format("dir[~p]~n", [Dir]),
 	code:add_patha(Dir).
 
-
-	

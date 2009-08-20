@@ -28,6 +28,6 @@ except: command=''
 try:    version = sys.argv[2]
 except: version = ''
 	
-print "%s: preinst: command[%s] configured version[%s] version[%s]" % (this_lib, command, version, this_version)
+#print "%s: preinst: command[%s] configured version[%s] version[%s]" % (this_lib, command, version, this_version)
 
 sys.exit(0)

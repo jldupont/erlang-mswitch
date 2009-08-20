@@ -1,6 +1,6 @@
 %% Author: Jean-Lou Dupont
 %% Created: 2009-08-19
-%% Description: TODO: Add description to tools
+%% Description: Common function tools
 -module(tools).
 
 %%

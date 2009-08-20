@@ -35,6 +35,7 @@
 import os
 import sys
 import glob
+import subprocess
 
 this_lib     = "erlang-mswitch"
 this_version = "$version"
@@ -51,4 +52,7 @@ print "%s: postrm: cmd[%s] version[%s]" % (this_lib, command, version)
 # ====================================
 if (command == 'remove') or (command == 'purge'):
 
+	proc = subprocess.Popen("update-rc.d mswitch remove", shell=True)
+	proc.wait()
+	
 	sys.exit(0)
