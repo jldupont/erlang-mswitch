@@ -58,10 +58,14 @@ class Commands(object):
 		self.cmd_start(feedback)
 		
 	def cmd_reload(self, feedback):
+		if feedback:
+			print "%s: unimplemented feature\n" % self.name
 		sys.exit(3) #unimplemented feature (see LSBInitScript documentation)
 		
 	def cmd_status(self, feedback):
 		ctx=self._canStart()
+		if feedback:
+			print "%s: [%s]\n" % (self.name, ctx["msg"])
 		sys.exit(ctx["status"])
 
 	
