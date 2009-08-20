@@ -9,7 +9,7 @@
 name() -> "mswitch".
 %% ^^^^^^^^^^^^^^^^^
 
-cmds() -> "[status|stop|busses]".
+cmds() -> "[status|stop|busses|nodes]".
 
 code_ok()               -> 0.
 code_error()            -> 1.
@@ -29,13 +29,16 @@ msg_pid()    -> "daemon found, pid: ".
 msg_usage()  -> "usage: "++name()++"_control [-q] "++cmds().
 msg_kill()   -> "stop command sent".
 msg_busses() -> "busses: ".
+msg_nodes()  -> "nodes: ".
 
-main(["-q", "stop"]) -> 	run(quiet,   stop);
+main(["-q", "stop"])   -> 	run(quiet,   stop);
 main(["-q", "status"]) ->	run(quiet, 	 status);
 main(["-q", "busses"]) ->	run(quiet, 	 busses);
+main(["-q", "nodes"])  ->	run(quiet, 	 nodes);
 main(["stop"]) ->			run(verbose, stop);
 main(["status"]) ->			run(verbose, status);
 main(["busses"]) ->			run(verbose, busses);
+main(["nodes"])  ->			run(verbose, nodes);
 	
 main([]) ->
 	msg(verbose, code_ok(), msg_usage()),
@@ -58,6 +61,10 @@ run(Feedback, busses) ->
 	Busses   = handle(Feedback, Response, busses),
 	msg(Feedback, code_ok(), msg_busses(), Busses);
 	
+run(Feedback, nodes) ->
+	Response = makerpc(nodes, getnodes),
+	Nodes    = handle(Feedback, Response, nodes),
+	msg(Feedback, code_ok(), msg_nodes(), Nodes);
 	
 	
 run(Feedback, status) ->

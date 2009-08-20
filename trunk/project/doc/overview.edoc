@@ -1,7 +1,7 @@
 ** this is the overview.edoc file for the application 'erlang-mswitch'
 
 @author Jean-Lou Dupont
-@title  mswitch documentation
+@title  mswitch documentation $version$
 
 @doc    
 
@@ -73,3 +73,14 @@ Subscribers receive Message through their registered server process using a smal
 		Mailbox = {Module, inbox, Server}
 	'''
 	can be used.
+
+== Releases ==
+
+  ===0.1===
+  Initial release
+  
+  ===0.2===
+  <ul>
+   <li>Added the default "system" bus.</li>
+   <li>Added 'nodes' command to mswitch_control</li>
+  </ul>
