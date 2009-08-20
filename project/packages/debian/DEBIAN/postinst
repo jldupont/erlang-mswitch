@@ -51,8 +51,8 @@ code = proc.wait()
 # Update symlink from /usr/bin to /etc/init.d
 # ===========================================
 slinks = [
-			{"src":"/usr/bin/mswitch",         "dst": "/etc/init.d/mswitch"},
-			{"src":"/usr/bin/mswitch_control", "dst": "/etc/init.d/mswitch_control"}
+			{"dst":"/usr/bin/mswitch",         "src": "/etc/init.d/mswitch"},
+			{"dst":"/usr/bin/mswitch_control", "src": "/etc/init.d/mswitch_control"}
 			]
 			
 for link in slinks:
@@ -65,6 +65,7 @@ for link in slinks:
 		os.chmod(src, 0700)
 		
 	except Exception,e:
+		print "Exception: %s\n" % str(e)
 		# symlink already exists? no worries
 		pass
 	

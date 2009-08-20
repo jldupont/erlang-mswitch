@@ -54,8 +54,8 @@ if (command == 'remove') or (command == 'purge'):
 	code=  proc.wait()
 	
 	# remove symlinks
-	slinks = [ "src":"/usr/bin/mswitch",
-			   "src":"/usr/bin/mswitch_control",
+	slinks = [ "/usr/bin/mswitch",
+			   "/usr/bin/mswitch_control",
 			]
 	
 	for link in slinks:
