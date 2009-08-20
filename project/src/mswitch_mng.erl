@@ -1,11 +1,12 @@
 %% Author: Jean-Lou Dupont
 %% Created: 2009-08-17
 %% Description: Management functions for mswitch
--module(mng).
+-module(mswitch_mng).
 
 %%
 %% MACROS
 %%
+-define(TOOLS, mswitch_tools).
 
 
 %%
@@ -40,28 +41,28 @@
 
 %% @private
 getsubs(Bus) -> getsubs(daemon, Bus).
-getsubs(Context, Bus) -> tools:getvar({mswitch, Context, subs, Bus}, []).
+getsubs(Context, Bus) -> ?TOOLS:getvar({mswitch, Context, subs, Bus}, []).
 
 getsubmailbox(Sub) -> getsubmailbox(daemon, Sub).
-getsubmailbox(Context, Sub) -> tools:getvar({mswitch, Context, node, Sub}, undefined).
+getsubmailbox(Context, Sub) -> ?TOOLS:getvar({mswitch, Context, node, Sub}, undefined).
 
 getbusses() -> getbusses(daemon).
-getbusses(Context) -> tools:getvar({mswitch, Context, busses}, []).
+getbusses(Context) -> ?TOOLS:getvar({mswitch, Context, busses}, []).
 
 getnodes() -> getnodes(daemon).
-getnodes(Context) -> tools:getvar({mswitch, Context, nodes}, []).
+getnodes(Context) -> ?TOOLS:getvar({mswitch, Context, nodes}, []).
 
 erase_bus(Bus) -> erase_bus(daemon, Bus).
-erase_bus(Context, Bus) -> tools:rem_from_var({mswitch, Context, busses}, Bus).
+erase_bus(Context, Bus) -> ?TOOLS:rem_from_var({mswitch, Context, busses}, Bus).
 
 erase_sub(Bus, Sub) -> erase_sub(daemon, Bus, Sub).
-erase_sub(Context, Bus, Sub) ->	tools:rem_from_var({mswitch, Context, subs, Bus}, Sub).
+erase_sub(Context, Bus, Sub) ->	?TOOLS:rem_from_var({mswitch, Context, subs, Bus}, Sub).
 
 erase_node_mailbox(Node) ->	erase_node_mailbox(daemon, Node).
 erase_node_mailbox(Context, Node) -> erase({mswitch, Context, node, Node}).
 
 erase_node(Node) ->	erase_node(daemon, Node).
-erase_node(Context, Node) -> tools:rem_from_var({mswitch, Context, nodes}, Node).
+erase_node(Context, Node) -> ?TOOLS:rem_from_var({mswitch, Context, nodes}, Node).
 
 
 
@@ -82,10 +83,10 @@ add_sub(Context, Busses, {Node, MailBox}) when is_list(Busses) ->
 	add_sub(Context, Rest, {Node, MailBox});
 
 add_sub(Context, Bus, {Node, MailBox}) ->
-	tools:add_to_var({mswitch, Context, nodes}, Node),
-	tools:add_to_var({mswitch, Context, busses}, Bus),
-	tools:add_to_var({mswitch, Context, node, Node}, MailBox),
-	tools:add_to_var({mswitch, Context, subs, Bus}, Node),
+	?TOOLS:add_to_var({mswitch, Context, nodes}, Node),
+	?TOOLS:add_to_var({mswitch, Context, busses}, Bus),
+	?TOOLS:add_to_var({mswitch, Context, node, Node}, MailBox),
+	?TOOLS:add_to_var({mswitch, Context, subs, Bus}, Node),
 	ok.
 	
 
@@ -97,7 +98,7 @@ rem_sub(Bus, Node) ->
 	rem_sub(daemon, Bus, Node).
 
 rem_sub(Context, Bus, Node) ->
-	tools:rem_from_var({mswitch, Context, subs, Bus}, Node),
+	?TOOLS:rem_from_var({mswitch, Context, subs, Bus}, Node),
 	clean_node_table(Context),
 	clean_bus_table(Context),
 	ok.
@@ -109,7 +110,7 @@ delete_node(Node) ->
 	delete_node(daemon, Node).
 	
 delete_node(Context, Node) ->
-	tools:msg("Deleting context[~p] node[~p]", [Context, Node]),
+	?TOOLS:msg("Deleting context[~p] node[~p]", [Context, Node]),
 	
 	%% delete associated mailbox
 	erase_node_mailbox(Context, Node),
@@ -161,7 +162,7 @@ clean_busses(Context, [Bus|T]) ->
 %% If empty, remove bus from bus table
 %% @private
 clean_bus(Context, Bus, []) ->
-	tools:msg("deleting bus: ~p context[~p]", [Bus, Context]),
+	?TOOLS:msg("deleting bus: ~p context[~p]", [Bus, Context]),
 	erase_bus(Context, Bus),
 	{deleted_bus, Context, Bus};
 

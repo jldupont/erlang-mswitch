@@ -41,7 +41,11 @@ class targets(object):
 			path="./project/packages/debian/etc/init.d"
 			shutil.copy("./project/mswitch",         path)
 			shutil.copy("./project/mswitch_control", path)
-			
+
+			print """> cloning mswitch_sniffer file to /usr/bin"""
+			path="./project/packages/debian/usr/bin"
+			shutil.copy("./project/mswitch_sniffer",  path)
+
 			print """> removing /tmp directory"""
 			shutil.rmtree('/tmp/%s_deb' % this_lib, ignore_errors=True)
 		
