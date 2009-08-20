@@ -148,7 +148,7 @@ def main():
 	try:
 		getattr(Commands(verbose), "cmd_"+cmd)(feedback)
 	except Exception, e:
-		%%print "Exception [%s]\n" % e
+		#print "Exception [%s]\n" % e
 		print "! invalid command [%s]\n" % cmd
 
 	
