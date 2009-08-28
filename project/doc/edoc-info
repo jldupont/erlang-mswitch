@@ -1,2 +1,2 @@
 {packages,[]}.
-{modules,[mswitch,mswitch_mng,mswitch_sniffer,mswitch_tools,test]}.
+{modules,[mswitch,mswitch_mng,mswitch_sniffer,mswitch_tools]}.

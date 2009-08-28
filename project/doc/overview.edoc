@@ -1,7 +1,7 @@
 ** this is the overview.edoc file for the application 'erlang-mswitch'
 
 @author Jean-Lou Dupont
-@title  mswitch documentation $version$
+@title  mswitch $version - documentation 
 
 @doc    
 
@@ -64,8 +64,8 @@ To send a Message on a Bus,
 Subscribers receive Message through their registered server process using a small 'thunk':
 
 	```
-		inbox({FromNode, Server, Message}) ->
-			Server ! {FromNode, Message}.
+		inbox({FromNode, Server, Bus, Message}) ->
+			Server ! {FromNode, Bus, Message}.
 	'''
 
 	When a subscriber wishes to receive messages from 'Bus', a 'Mailbox' of the form:
@@ -89,5 +89,10 @@ Subscribers receive Message through their registered server process using a smal
   <ul>
    <li>Factored-in module hierarchy</li>
    <li>Added 'mswitch_sniffer' command-line utility</li>   
+  </ul>
+  
+  ===1.0===
+  <ul>
+   <li>Changed inbox API to include the source 'bus'</li> 
   </ul>
   

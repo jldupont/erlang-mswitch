@@ -36,7 +36,7 @@
 %%
 -export([
 		 loop/0, call/2,
-		 handle/3, send/3, reply/2,
+		 handle/3, send/4, reply/2,
 		 set_code_path/0
 		 ]).
 %% ----------------------                 ------------------------------
@@ -385,43 +385,48 @@ reply(To, Message) ->
 	To ! {reply, self(), Message}.
 
 
-%% Sends a Message on a Bus
+%% @doc Sends a Message on a Bus
 %%
 %% @private
 send(FromNode, {Bus, Message}) ->
 	Subscribers=?MNG:getsubs(Bus),
-	send(FromNode, Subscribers, Message).
+	send(FromNode, Subscribers, Bus, Message).
 
 
 %% @private
-send(_FromNode, [], _Message) -> 
+send(_FromNode, [], _Bus, _Message) -> 
 	no_subs;
 
-send(FromNode, Subs, Message) -> 
-	dosend(FromNode, Subs, Message).
+send(FromNode, Subs, Bus, Message) -> 
+	dosend(FromNode, Subs, Bus, Message).
 
 
 %% @private
-dosend(_FromNode, [], _Message) ->
+dosend(_FromNode, [], _Bus, _Message) ->
 	no_more_subs;
 
-dosend(FromNode, [Sub|Rest], Message) ->
+dosend(FromNode, [Sub|Rest], Bus, Message) ->
 	[MB]=?MNG:getsubmailbox(Sub),
-	sendto(FromNode, {Sub, MB}, Message),
-	dosend(FromNode, Rest, Message).
+	sendto(FromNode, {Sub, MB}, Bus, Message),
+	dosend(FromNode, Rest, Bus, Message).
 
 
 %% @private
 %% don't send to self!
-sendto(X, {X, {_,_,_}}, _Message) ->
+sendto(X, {X, {_,_,_}}, _Bus, _Message) ->
 	skip_self;
 
-sendto(FromNode, To, Message) ->
+sendto(FromNode, To, Bus, Message) ->
+	
 	%% extract mailbox parameters
+	%% @TODO Maybe protect more against errors ?MNG
+	%% The tuple form of the mailbox is already checked during 
+	%% the 'subscribe' API call so do we need more check here?
+	
 	{DestNode, {Module, Function, Server}} = To,
 	?TOOLS:msg("sendto: Dst[~p] Mod[~p] Func[~p] Msg[~p]", [DestNode, Module, Function, Message]),
 	
-	try rpc:call(DestNode, Module, Function, [{FromNode, Server, Message}]) of
+	try rpc:call(DestNode, Module, Function, [{FromNode, Server, Bus, Message}]) of
 		
 		%% Subscriber probably disappeared...
 		{badrpc, _Reason} ->

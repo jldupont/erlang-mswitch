@@ -34,9 +34,9 @@ start(Server, Busses) ->
 	{ok, Pid}.
 
 
-inbox({FromNode, Server, Message}) ->
+inbox({FromNode, Server, Bus, Message}) ->
 	%%io:format("inbox, message[~p]~n",[Message]),
-	Server ! {FromNode, Message}.
+	Server ! {FromNode, Bus, Message}.
 
 
 
@@ -55,8 +55,8 @@ loop() ->
 		stop ->
 			exit(ok);
 		
-		{_From, {count, Count}} ->
-			io:format("Rx: ~p~n", [Count]);
+		{_From, Bus, {count, Count}} ->
+			io:format("Bus[~p] Rx: ~p~n", [Bus, Count]);
 		
 		Other ->
 			io:format("~p: unhandled message [~p]~n", [?MODULE, Other])

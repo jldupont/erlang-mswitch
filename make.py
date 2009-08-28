@@ -8,7 +8,7 @@ import shutil
 import sys
 from optparse import OptionParser
 
-from helpers import *
+from helpers_0_2 import *
 
 this_lib="erlang-mswitch"
 
@@ -26,7 +26,14 @@ class targets(object):
 		print "Preparing .deb package"
 		try:
 			version = read_version()
+			params = {'version':version}
+			
 			print """> building version [%s]""" % version
+			
+			print """> adjusting version in doc files"""
+			d_path= ["./project/doc/*.html"]
+			replace_params_in_globs(d_path, params)
+			
 			
 			print """> cloning files to packages/debian"""
 		
@@ -54,9 +61,9 @@ class targets(object):
 		
 			print """> adjusting version in control files"""
 			c_path = '/tmp/%s_deb/DEBIAN' % this_lib
-			params = {'version':version}
-			adjust_control_files(params, c_path)
 			
+			adjust_control_files(params, c_path)
+					
 			print """> adjusting permissions for `dkpg-deb` command-line"""
 			recursive_chmod("/tmp/%s_deb" % this_lib, mode=0775)
 		
