@@ -96,3 +96,8 @@ Subscribers receive Message through their registered server process using a smal
    <li>Changed inbox API to include the source 'bus'</li> 
   </ul>
   
+  ===1.1===
+  <ul>
+   <li>Corrected dependencies for control script </li> 
+  </ul>
+  
