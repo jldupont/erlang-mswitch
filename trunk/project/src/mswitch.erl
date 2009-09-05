@@ -56,6 +56,9 @@ start_link(debug) ->
 
 %% @private
 do_start_link(Params) ->
+	
+	%for development
+	add_cwd(),
 	set_code_path(),
 	Pid = spawn_link(?MODULE, loop, []),
 	register(mswitch_server, Pid),
@@ -68,6 +71,13 @@ do_start_link(Params) ->
 %% @spec stop() -> void()
 stop() ->
 	mswitch_server ! stop.
+
+
+add_cwd() ->
+	{ok,Cwd}=file:get_cwd(),
+	Cp=Cwd++"/ebin",
+	%io:format("cp<~p>~n", [Cp]),
+	code:add_pathsa([Cp]).
 
 
 %% ----------------------           ------------------------------
@@ -429,7 +439,8 @@ sendto(FromNode, To, Bus, Message) ->
 	try rpc:call(DestNode, Module, Function, [{FromNode, Server, Bus, Message}]) of
 		
 		%% Subscriber probably disappeared...
-		{badrpc, _Reason} ->
+		{badrpc, Reason} ->
+			%io:format("sendto exception, Reason<~p>~n", [Reason]),
 			?MNG:delete_node(DestNode),
 			
 			%% system bus notification
