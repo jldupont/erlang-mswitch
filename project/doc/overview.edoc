@@ -101,3 +101,10 @@ Subscribers receive Message through their registered server process using a smal
    <li>Corrected dependencies for control script </li> 
   </ul>
   
+  ===2.0===
+  <ul>
+   <li>Improved 'mswitch_sniffer': more monitoring options</li> 
+   <li></li>
+   <li></li>
+  </ul>
+  
