@@ -7,7 +7,7 @@
 -compile(export_all).
 
 
-parse([]) ->
+parse(_, []) ->
 	[];
 
 %% @doc Parses a command line argument list
@@ -18,31 +18,31 @@ parse([]) ->
 %%	@type ParsedList = [Item]
 %%	@type Item = {term, term()} | {Option, [term()]}
 %%
-parse(List) when is_list(List) ->
-	do_parse(List, []);
+parse(C, List) when is_list(List) ->
+	do_parse(C, List, []);
 
-parse(Atom) when is_atom(Atom) ->
+parse(_C, Atom) when is_atom(Atom) ->
 	[Atom];
 
-parse(Tuple) when is_tuple(Tuple) ->
+parse(_C, Tuple) when is_tuple(Tuple) ->
 	[Tuple()];
 
-parse(Other) ->
+parse(_, Other) ->
 	{error, {unknown_term, Other}}.
 
 
 
-do_parse([], Acc) ->
+do_parse(_C, [], Acc) ->
 	Acc;
 
 %% @private
-do_parse([Item|Items], Acc) ->
-	case starts_with_hyphen(Item) of
+do_parse(C, [Item|Items], Acc) ->
+	case starts_with_char(C, Item) of
 		true ->
-			{List, Rest}=accumulate(Item, Items, []),
-			do_parse(Rest, Acc++List);
+			{List, Rest}=accumulate(C, Item, Items, []),
+			do_parse(C, Rest, Acc++List);
 		false ->
-			do_parse(Items, Acc++[{term, Item}])
+			do_parse(C, Items, Acc++[{term, Item}])
 	end.
 
 
@@ -50,25 +50,25 @@ do_parse([Item|Items], Acc) ->
 %% @doc Verifies if the atom starts with an hyphen
 %%
 %% @spec starts_with_hyphen(atom()) -> true | false
-starts_with_hyphen(E) when is_atom(E) ->
+starts_with_char(C, E) when is_atom(E) ->
 	[H|_T]=erlang:atom_to_list(E),
 	if
-		H == $- ->	true;
-		true    -> 	false
+		H == C ->	true;
+		true   -> 	false
 	end.
 
-accumulate(HeadItem, [], Acc) ->
+accumulate(_, HeadItem, [], Acc) ->
 	{[{HeadItem, Acc}], []};
 
 %% @doc Accumulates Items from the list until
-%%		a) an hyphen is found OR
+%%		a) an C is found OR
 %%		b) end of list
 %%
 %% @private
-accumulate(HeadItem, [Item|Items], Acc) ->
-	case starts_with_hyphen(Item) of
+accumulate(C, HeadItem, [Item|Items], Acc) ->
+	case starts_with_char(C, Item) of
 		true ->	{[{HeadItem, Acc}], [Item|Items]};
-		false -> accumulate(HeadItem, Items, Acc++[Item])
+		false -> accumulate(C, HeadItem, Items, Acc++[Item])
 	end.
 
 			
@@ -80,9 +80,9 @@ accumulate(HeadItem, [Item|Items], Acc) ->
 %% ----------------------        ------------------------------
 
 t1() ->
-	L=['-a', a1, a2, '-b', b1, b2, b3],
-	parse(L).
+	L=['#a', a1, a2, '#b', b1, b2, b3],
+	parse($#, L).
 
 t2() ->
-	L2=['w1','w2','-a', a1, a2, '-b', b1, b2, b3],
-	parse(L2).
+	L2=['w1','w2','#a', a1, a2, '#b', b1, b2, b3],
+	parse($#, L2).

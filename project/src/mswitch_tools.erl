@@ -18,6 +18,7 @@
 		 msg/1, msg/2,
 		 extract_host/0,
 		 make_node/1
+		,kfind/2, kfind/3
 		 ]).
 
 
@@ -135,3 +136,49 @@ make_node(Name , Node) when is_list(Name) ->
 	erlang:list_to_atom(CompleteName).
 
 
+
+kfind(_Key, []) ->	{};
+
+%% @doc Searches through a tuple list for Key
+%%
+%% @spec kfind(Key, List) -> {} | {Key, Value}
+%% where
+%%	Key = atom()
+%%	List = [tuple()]
+%%	Value = term()
+kfind(Key, List) ->
+	case is_list(List) of
+		true  -> TheList=List;
+		false -> TheList=[List]
+	end,
+	
+	case erlang:is_builtin(lists, keyfind, 3) of
+		true  ->
+			case lists:keyfind(Key,1,TheList) of
+				false -> {};
+				Tuple -> Tuple
+			end;
+
+		false ->
+			case lists:keysearch(Key,1,TheList) of
+				{value, Value} -> Value;
+				_              -> {}
+			end
+	end.
+
+kfind(Key, [], Default) ->
+	{Key, Default};
+
+%% @doc Returns {Key, Default} if not found or {Key, Value} otherwise
+%%
+%% @spec kfind(Key, List, Default) -> {Key, Value} | {}
+%% where
+%%	Key = atom()
+%%	List = [tuple()]
+%%	Value = term()
+%%	Default = term()
+kfind(Key, List, Default) ->
+	case kfind(Key, List) of
+		false        -> {Key, Default};
+		{Key, Value} ->	{Key, Value}
+	end.

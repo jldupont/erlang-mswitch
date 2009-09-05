@@ -1,4 +1,4 @@
 #!/bin/sh
-echo "Usage:   mswitch_sniffer [Bus] | [Busses]"
-echo "Example: mswitch_sniffer system notif event"
+echo "Usage:   mswitch_sniffer ^b bus1 bus2 ^n nodename1 nodename2"
+echo "Usage:   mswitch_sniffer ^b bus1 bus2"
 erl -pa ./ebin -sname mswitch_sniffer -s mswitch_sniffer start $@
