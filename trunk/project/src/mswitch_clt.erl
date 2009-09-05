@@ -10,10 +10,13 @@
 parse(_, []) ->
 	[];
 
-%% @doc Parses a command line argument list
+%% @doc Parses a command line argument list.
+%%		The parameter 'C' denotes a char() which
+%%		serves as 'option' list start.
 %%
-%% @spec parse(Arguments) -> ParsedList | {error, Reason}
+%% @spec parse(C, Arguments) -> ParsedList | {error, Reason}
 %% where
+%%	C = char()
 %%	Arguments = atom() | [term()] | tuple()
 %%	@type ParsedList = [Item]
 %%	@type Item = {term, term()} | {Option, [term()]}
@@ -47,9 +50,12 @@ do_parse(C, [Item|Items], Acc) ->
 
 
 	
-%% @doc Verifies if the atom starts with an hyphen
+%% @doc Verifies if the atom starts with a specific character
 %%
-%% @spec starts_with_hyphen(atom()) -> true | false
+%% @spec starts_with_char(Char, atom()) -> true | false
+%% where 
+%%	Char = char()
+%%
 starts_with_char(C, E) when is_atom(E) ->
 	[H|_T]=erlang:atom_to_list(E),
 	if

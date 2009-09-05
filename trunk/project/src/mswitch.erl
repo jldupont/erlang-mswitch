@@ -444,7 +444,7 @@ sendto(FromNode, To, Bus, Message) ->
 			?MNG:delete_node(DestNode),
 			
 			%% system bus notification
-			send(mswitch, {system, {delete_node, DestNode}}),
+			send(mswitch, {system, {delete_node, DestNode, Reason}}),
 			{removed_sub, DestNode};
 	
 		Other ->

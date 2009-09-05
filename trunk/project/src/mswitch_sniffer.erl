@@ -15,7 +15,7 @@
 
 
 start() ->
-	run(undefined, [system]).
+	run(undefined, [system, sys]).
 
 start(OptionsList) when is_list(OptionsList) ->
 	Parsed=?CLT:parse($^, OptionsList),
@@ -28,10 +28,11 @@ start(Bus) when is_atom(Bus) ->
 	run(undefined, [Bus]).
 
 
-run({}, {})                  -> do_run([], [system]);
+run({}, {})                  -> do_run([], [system, sys]);
 run({}, {_, Busses})         -> do_run([], Busses);
-run({_, Nodes}, {})          -> do_run(Nodes, [system]);
-run({_, Nodes}, {_, Busses}) -> do_run(Nodes, Busses).
+run({_, Nodes}, {})          -> do_run(Nodes, [system, sys]);
+run({_, Nodes}, {_, Busses}) -> do_run(Nodes, Busses);
+run(undefined, Busses)       -> do_run([], Busses).
 
 
 do_run(Nodes,Busses) ->
