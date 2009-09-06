@@ -49,6 +49,13 @@
 		,rem_from_tuple_list/3
 		
 		,make_list/1
+		
+		,has_pattern/2
+		,check_pattern/2
+		,filter_on_patterns/3
+		
+		,get_special/3
+		
 		 ]).
 
 %% @doc Ternary operator
@@ -761,4 +768,79 @@ rem_from_tuple_list(List, GroupName, TupleName) ->
 %%
 make_list(List) when is_list(List) -> List;
 make_list(SomeTerm) -> [SomeTerm].
+
+
+%% @doc Verifies if Key contains any of Patterns
+%%
+%% @spec has_pattern(Patterns, Key) -> true | false
+%% where
+%%	Key = atom()
+%%	@type Patterns=[atom()]
+%%
+has_pattern(Patterns, Key) when is_atom(Key) ->
+	has_pattern(Patterns, erlang:atom_to_list(Key));
+
+has_pattern(Patterns, Key) when is_list(Patterns) ->
+	do_has_pattern(false, Patterns, Key).
+
+do_has_pattern(true, _, _)      -> true;
+do_has_pattern(false, [], _Key) -> false;
+	
+do_has_pattern(false, Patterns, Key) ->
+	[Pattern|Rest] = Patterns,
+	Result=check_pattern(Pattern, Key),
+	do_has_pattern(Result, Rest, Key).
+
+%% @doc Verifies if Key string contains atom Pattern 
+%%
+%% @spec check_pattern(Pattern, Key) -> true | false
+%% where
+%%	Pattern=atom()
+%%	Key=atom()
+%%
+check_pattern(Pattern, Key) ->
+	Str=erlang:atom_to_list(Pattern),
+	case string:str(Key, Str) of
+		0 -> false;
+		_ -> true
+	end.
+
+
+%% @doc Retrieves the complete tuple matching Key
+%%
+%% @spec get_special(List, Pattern, Key) -> tuple() | {}
+%% where
+%%	List=[tuple()]
+%%	Pattern=atom()
+%%	Key=atom()
+get_special(List, Pattern, Key) when is_atom(Pattern) ->
+	Pat=erlang:atom_to_list(Pattern),
+	get_special(List, Pat, Key);
+
+get_special(List, Pattern, Key) when is_list(Pattern) ->
+	%%io:format("get_special: Key[~p] List[~p]~n", [Key, List]),
+	Var=erlang:atom_to_list(Key)++Pattern,
+	Vara=erlang:list_to_atom(Var),
+	kfind(Vara, List).
+
+
+
+
+filter_on_patterns(_Patterns, [], Acc) -> Acc;
+
+%% @doc Filters elements of List based on Patterns
+%%
+%% @spec filter_on_patterns(Patterns, List, Acc) -> list() 
+%% where
+%%	@type Patterns=[atom()]
+%%	List=list()
+%%	Acc=list()
+%%
+filter_on_patterns(Patterns, List, Acc) ->
+	[{Key, Value}|Rest] = List,
+	case has_pattern(Patterns, Key) of
+		true  -> Item={};
+		false -> Item={Key, Value}
+	end,
+	filter_on_patterns(Patterns, Rest, Acc++[Item]).
 

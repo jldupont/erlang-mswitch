@@ -9,7 +9,24 @@
 
 %-define(CONFIG_FILENAME, ".twitter").
 -define(LOG,      twitter_log).
--define(TOOLS,    twitter_tools).
+-define(TOOLS,    mswitch_tools).
+
+
+%% @doc Reads the configuration file
+%%
+%% @spec read_config() -> {error, Reason} | {ok, Terms}
+%% where 
+%% 	Terms = [tuple()]
+%%
+read_config(Filename) ->
+	case file:consult(Filename) of
+		{error, Reason} ->
+			{error, Reason};
+		{ok, Terms} ->
+			{ok, Terms}
+	end.
+
+
 
 
 %% @doc Loads & validates system configuration from file
@@ -59,7 +76,7 @@ process_config(Modules, Defaults) ->
 			
 			%io:format("After blacklist: ~p~n", [List2]),
 			
-			List3= filter_on_patterns(['.min', '.max'], List2, []),
+			List3= ?TOOLS:filter_on_patterns(['.min', '.max'], List2, []),
 			
 			%% 3) check presence of mandatory parameters
 			check_mandatory(List3, Defaults),
@@ -78,9 +95,11 @@ process_config(Modules, Defaults) ->
 			{ok, Mtime, List7}			
 	end.
 
+%% @private
 do_process_config([], Acc) ->
 	Acc;
 
+%% @private
 do_process_config(Config, Acc) when is_list(Config) ->
 	[Entry|Rest] = Config,
 	Fentry = filter_one(Entry),
@@ -106,15 +125,6 @@ filter_on_blacklist([Entry|Rest], Blacklist, Acc) ->
 	end.
 	
 
-
-filter_on_patterns(_Patterns, [], Acc) -> Acc;
-
-filter_on_patterns(Patterns, [{Key, Value}|Rest], Acc) ->
-	case has_pattern(Patterns, Key) of
-		true  -> Item={};
-		false -> Item={Key, Value}
-	end,
-	filter_on_patterns(Patterns, Rest, Acc++[Item]).
 
 
 
@@ -211,21 +221,21 @@ check_type3(Key, _Ckey, Type, _Cvalue, _Dvalue) ->
 %% @spec load_config() -> {error, Reason} | {ok, Mtime, Config}
 %%
 %% @private
-load_config_file() ->
-	case read_config() of
+load_config_file(Filename) ->
+	case read_config(Filename) of
 		{error, Reason} ->
 			?LOG:log(error, "config: error reading configuration file, reason: ", [Reason]),
 			{error, Reason};
 		
 		{ok, Config} ->
-			Mtime=get_config_file_mtime(),
+			Mtime=get_config_file_mtime(Filename),
 			{ok, Mtime, Config}
 	end.
 
 
 
-get_config_file_mtime() ->
-	Filename=config_filename(),
+get_config_file_mtime(Filename) ->
+	%Filename=config_filename(),
 	case file:read_file_info(Filename) of
 		{ok, FileInfo} ->
 			FileInfo#file_info.mtime;
@@ -432,27 +442,6 @@ get_blacklist([Module|Modules], Acc) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%  HELPERS  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ----------------------           ------------------------------
 
-%% @doc Reads the configuration file
-%%
-%% @spec read_config() -> {error, Reason} | {ok, Terms}
-%% where 
-%% 	Terms = [tuple()]
-%%
-read_config() ->
-	Filename=config_filename(),
-	read_config(Filename).
-
-read_config(error) ->
-	{error, "environment 'HOME' not defined"};
-
-read_config(Filename) ->
-	case file:consult(Filename) of
-		{error, Reason} ->
-			{error, Reason};
-		{ok, Terms} ->
-			{ok, Terms}
-	end.
-
 
 
 %% @doc Finds a specific Key from the tuple list
@@ -470,7 +459,7 @@ find_key_in_config_list(List, Key) ->
 %% where
 %%	Key=atom()
 get_min(List, Key) ->
-	get_special(List, ".min", Key).
+	?TOOLS:get_special(List, ".min", Key).
 	
 
 %% @doc Retrieves the 'max' value for Key in the Defaults
@@ -481,54 +470,13 @@ get_min(List, Key) ->
 
 %%
 get_max(List, Key) ->
-	get_special(List, ".max", Key).
-
-
-
-%% @doc Retrieves the complete tuple matching Key
-%%
-%% @spec get_special(List, Pattern, Key) -> tuple() | {}
-%% where
-%%	List=[tuple()]
-%%	Pattern=atom()
-%%	Key=atom()
-get_special(List, Pattern, Key) when is_atom(Pattern) ->
-	Pat=erlang:atom_to_list(Pattern),
-	get_special(List, Pat, Key);
-
-get_special(List, Pattern, Key) when is_list(Pattern) ->
-	%%io:format("get_special: Key[~p] List[~p]~n", [Key, List]),
-	Var=erlang:atom_to_list(Key)++Pattern,
-	Vara=erlang:list_to_atom(Var),
-	?TOOLS:kfind(Vara, List).
+	?TOOLS:get_special(List, ".max", Key).
 
 
 
 
-has_pattern(Patterns, Key) when is_atom(Key) ->
-	has_pattern(Patterns, erlang:atom_to_list(Key));
-
-has_pattern(Patterns, Key) when is_list(Patterns) ->
-	do_has_pattern(false, Patterns, Key).
-
-do_has_pattern(true, _, _) ->
-	true;
-
-do_has_pattern(false, [], _Key) ->
-	false;
-	
-do_has_pattern(false, Patterns, Key) ->
-	[Pattern|Rest] = Patterns,
-	Result=check_pattern(Pattern, Key),
-	do_has_pattern(Result, Rest, Key).
 
 
-check_pattern(Pattern, Key) ->
-	Str=erlang:atom_to_list(Pattern),
-	case string:str(Key, Str) of
-		0 -> false;
-		_ -> true
-	end.
 
 	
 
