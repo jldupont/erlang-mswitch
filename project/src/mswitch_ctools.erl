@@ -8,8 +8,37 @@
 -include_lib("kernel/include/file.hrl").
 
 %-define(CONFIG_FILENAME, ".twitter").
--define(LOG,      twitter_log).
+-define(LOG,      log(LogFun)).
 -define(TOOLS,    mswitch_tools).
+
+
+%% @doc Loads & validates system configuration from file
+%%
+%%
+config({LogModule, LogFunction}, Filename, Modules) when is_atom(LogModule), is_atom(LogFunction),
+															is_list(Filename), is_list(Modules) ->
+	LogFun={LogModule, LogFunction},
+	
+	Defaults=get_defaults(LogFun, Modules),
+	%io:format("Defaults: ~p~n", [Defaults]),	
+	Result=process_config(LogFun, Filename, Modules, Defaults),
+	case Result of
+		{ok, Mtime, Config} ->
+			%io:format("Config: ~p~n", [Config]),
+			Merged=merge(LogFun, Defaults, Config),
+			{ok, Mtime, Merged};
+		Other ->
+			Other
+	end.
+
+log({Mod, Fun}, Sev, Msg) ->
+	apply(Mod, Fun, [Sev, Msg]).
+
+	
+log({Mod, Fun}, Sev, Msg, Params) ->
+	apply(Mod, Fun, [Sev, Msg, Params]).
+
+
 
 
 %% @doc Reads the configuration file
@@ -29,22 +58,6 @@ read_config(Filename) ->
 
 
 
-%% @doc Loads & validates system configuration from file
-%%
-%%
-do_config(Modules) ->
-	Defaults=get_defaults(Modules),
-	%io:format("Defaults: ~p~n", [Defaults]),	
-	Result=process_config(Modules, Defaults),
-	case Result of
-		{ok, Mtime, Config} ->
-			%io:format("Config: ~p~n", [Config]),
-			Merged=merge(Defaults, Config),
-			{ok, Mtime, Merged};
-		Other ->
-			Other
-	end.
-
 
 
 
@@ -57,8 +70,8 @@ do_config(Modules) ->
 %%
 %% @spec process_config() -> {error, Reason} | {ok, Mtime, ModuleConfig}
 %%
-process_config(Modules, Defaults) ->
-	case load_config_file() of
+process_config(LogFun, Filename, Modules, Defaults) ->
+	case load_config_file(LogFun, Filename) of
 		{error, Reason} ->
 			% already logged
 			{error, Reason};
@@ -68,26 +81,26 @@ process_config(Modules, Defaults) ->
 			%io:format("Config file content: ~p~n", [Config]),
 			
 			%% 1) check format
-			List=  do_process_config(Config, []),
+			List=  do_process_config(LogFun, Config, []),
 			Blacklist=get_blacklist(Modules, []),
 			
 			%% 2) filter on blacklist
-			List2= filter_on_blacklist(List, Blacklist, []),
+			List2= filter_on_blacklist(LogFun, List, Blacklist, []),
 			
 			%io:format("After blacklist: ~p~n", [List2]),
 			
-			List3= ?TOOLS:filter_on_patterns(['.min', '.max'], List2, []),
+			List3= ?TOOLS:filter_on_patterns(LogFun, ['.min', '.max'], List2, []),
 			
 			%% 3) check presence of mandatory parameters
-			check_mandatory(List3, Defaults),
+			check_mandatory(LogFun,List3, Defaults),
 			
 			%% 4) type check
-			List4=check_type(List2, Defaults, []),
+			List4=check_type(LogFun, List2, Defaults, []),
 			
 			List5=filter_entries(List4, []),
 			
 			%% 5) check limit requirements
-			List6=check_limits(List5, Defaults, []),
+			List6=check_limits(LogFun, List5, Defaults, []),
 	
 			%% Remove unnecessary entries such as {}
 			List7=filter_entries(List6, []),
@@ -96,65 +109,67 @@ process_config(Modules, Defaults) ->
 	end.
 
 %% @private
-do_process_config([], Acc) ->
+do_process_config(_LogFun, [], Acc) ->
 	Acc;
 
 %% @private
-do_process_config(Config, Acc) when is_list(Config) ->
+do_process_config(LogFun, Config, Acc) when is_list(Config) ->
 	[Entry|Rest] = Config,
-	Fentry = filter_one(Entry),
-	do_process_config(Rest, Acc++[Fentry]).
+	Fentry = filter_one(LogFun, Entry),
+	do_process_config(LogFun, Rest, Acc++[Fentry]).
 
 
-filter_one({}) -> {};
-filter_one({Key, Value}) when is_atom(Key) -> {Key, Value};
-filter_one(Inv) -> ?LOG:log(error, "config: invalid entry in config file: ", [Inv]).
+%% @private
+filter_one(_LogFun, {}) -> {};
+filter_one(_LogFun, {Key, Value}) when is_atom(Key) -> {Key, Value};
+filter_one(LogFun, Inv) -> log(LogFun, error, "config: invalid entry in config file: ", [Inv]).
 
 
+%% @private
+filter_on_blacklist(_LogFun, [], _Blacklist, Acc) -> Acc;
 
-filter_on_blacklist([], _Blacklist, Acc) -> Acc;
-
-filter_on_blacklist([Entry|Rest], Blacklist, Acc) ->
+filter_on_blacklist(LogFun, [Entry|Rest], Blacklist, Acc) ->
 	Key=get_key(Entry),
 	Blacklisted=lists:member(Key, Blacklist),
 	case Blacklisted of
 		true  -> 
-			?LOG:log(warning, "config: blacklisted parameter: ", [Key]),
-			filter_on_blacklist(Rest, Blacklist, Acc);
-		false -> filter_on_blacklist(Rest, Blacklist, Acc++[Entry])
+			log(LogFun, warning, "config: blacklisted parameter: ", [Key]),
+			filter_on_blacklist(LogFun, Rest, Blacklist, Acc);
+		false -> filter_on_blacklist(LogFun, Rest, Blacklist, Acc++[Entry])
 	end.
 	
 
 
 
-
-check_mandatory(_, []) ->
+%% @private
+check_mandatory(_LogFun, _, []) ->
 	finished;
 
 %% @doc Go through the Defaults list to verify
 %%		the presence of mandatory parameters
 %%
-check_mandatory(List, [Default|Defaults]) ->
+check_mandatory(LogFun, List, [Default|Defaults]) ->
 	Key=get_key(Default),
 	Level=get_level(Default),
 	
 	case Level of
 		mandatory ->
-			check_mandatory1(List, Key);
+			check_mandatory1(LogFun, List, Key);
 		_ ->
 			ok
 	end,
-	check_mandatory(List, Defaults).
+	check_mandatory(LogFun, List, Defaults).
 	
 
-check_mandatory1(List, Key) ->
+check_mandatory1(LogFun, List, Key) ->
 	case find_key_in_config_list(List, Key) of
-		{} -> ?LOG:log(error, "config: missing mandatory parameter: ", [Key]);
+		{} -> log(LogFun, error, "config: missing mandatory parameter: ", [Key]);
 		_  -> ok
 	end.
 
 
-check_type([], _Defaults, Acc) -> Acc;
+%% @private
+check_type(_LogFun, [], _Defaults, Acc) -> Acc;
 
 %% @doc Go through the parameters list
 %%		and check each entry type against
@@ -163,15 +178,15 @@ check_type([], _Defaults, Acc) -> Acc;
 %%
 %% @spec check_type(Parameters, Defaults, Acc) -> list()
 %%
-check_type([ConfigEntry|Rest], Defaults, Acc) ->
-	Entry=check_type_one(ConfigEntry, Defaults),
-	check_type(Rest, Defaults, Acc++[Entry]).
+check_type(LogFun, [ConfigEntry|Rest], Defaults, Acc) ->
+	Entry=check_type_one(LogFun, ConfigEntry, Defaults),
+	check_type(LogFun,Rest, Defaults, Acc++[Entry]).
 
 
-check_type_one(ConfigEntry, Defaults) ->
+check_type_one(LogFun, ConfigEntry, Defaults) ->
 	{Key, _Value}=ConfigEntry,
 	Dentry=get_entry_from_defaults(Defaults, Key),
-	case check_type2(Key, ConfigEntry, Dentry) of
+	case check_type2(LogFun, Key, ConfigEntry, Dentry) of
 		ok -> ConfigEntry;
 		_ ->  
 			case Dentry of
@@ -183,29 +198,29 @@ check_type_one(ConfigEntry, Defaults) ->
 
 %% @doc Filters a configuration parameter
 %%
-check_type2(Key, _ConfigEntry, {}) ->
-	?LOG:log(debug, "config: missing default entry for key: ", [Key]),
+check_type2(LogFun, Key, _ConfigEntry, {}) ->
+	log(LogFun, debug, "config: missing default entry for key: ", [Key]),
 	
 	%% delete entry from list of valid entries
 	no_default;
 
-check_type2(Key, {Ckey, Cvalue}, DefaultEntry) ->
+check_type2(LogFun, Key, {Ckey, Cvalue}, DefaultEntry) ->
 	{type, TargetType}=get_type(DefaultEntry),
 	{value, DefaultValue}=get_value(DefaultEntry),
-	check_type3(Key, Ckey, TargetType, Cvalue, DefaultValue).
+	check_type3(LogFun, Key, Ckey, TargetType, Cvalue, DefaultValue).
 
-check_type3(_Key, _Ckey, atom,   Cvalue, _Dvalue) when is_atom(Cvalue)    -> ok;
-check_type3(_Key, _Ckey, string, Cvalue, _Dvalue) when is_list(Cvalue)    -> ok;
-check_type3(_Key, _Ckey, int,    Cvalue, _Dvalue) when is_integer(Cvalue) -> ok;
-check_type3(_Key, _Ckey, float,  Cvalue, _Dvalue) when is_float(Cvalue)   -> ok;
-check_type3(Key,  _Ckey, nstring,Cvalue, _Dvalue) when is_list(Cvalue) -> 
+check_type3(_LogFun, _Key, _Ckey, atom,   Cvalue, _Dvalue) when is_atom(Cvalue)    -> ok;
+check_type3(_LogFun, _Key, _Ckey, string, Cvalue, _Dvalue) when is_list(Cvalue)    -> ok;
+check_type3(_LogFun, _Key, _Ckey, int,    Cvalue, _Dvalue) when is_integer(Cvalue) -> ok;
+check_type3(_LogFun, _Key, _Ckey, float,  Cvalue, _Dvalue) when is_float(Cvalue)   -> ok;
+check_type3(LogFun, Key,  _Ckey, nstring,Cvalue, _Dvalue) when is_list(Cvalue) -> 
 	case length(Cvalue) of
-		0 -> ?LOG:log(error, "config: expecting non-zero string for key: ", [Key]),	invalid;
+		0 -> log(LogFun, error, "config: expecting non-zero string for key: ", [Key]),	invalid;
 		_ -> ok
 	end;
 
-check_type3(Key, _Ckey, Type, _Cvalue, _Dvalue) -> 
-	?LOG:log(error, "config: expecting Type for Key, {Type, Key}: ", [{Type, Key}]).
+check_type3(LogFun, Key, _Ckey, Type, _Cvalue, _Dvalue) -> 
+	log(LogFun, error, "config: expecting Type for Key, {Type, Key}: ", [{Type, Key}]).
 		
 
 
@@ -221,26 +236,26 @@ check_type3(Key, _Ckey, Type, _Cvalue, _Dvalue) ->
 %% @spec load_config() -> {error, Reason} | {ok, Mtime, Config}
 %%
 %% @private
-load_config_file(Filename) ->
+load_config_file(LogFun, Filename) ->
 	case read_config(Filename) of
 		{error, Reason} ->
-			?LOG:log(error, "config: error reading configuration file, reason: ", [Reason]),
+			log(LogFun, error, "config: error reading configuration file, reason: ", [Reason]),
 			{error, Reason};
 		
 		{ok, Config} ->
-			Mtime=get_config_file_mtime(Filename),
+			Mtime=get_config_file_mtime(LogFun, Filename),
 			{ok, Mtime, Config}
 	end.
 
 
 
-get_config_file_mtime(Filename) ->
+get_config_file_mtime(LogFun, Filename) ->
 	%Filename=config_filename(),
 	case file:read_file_info(Filename) of
 		{ok, FileInfo} ->
 			FileInfo#file_info.mtime;
 		{error, Reason} ->
-			?LOG:log(error, "config: error getting info from file, {Filename, Reason}", [Filename, Reason]),
+			log(LogFun, error, "config: error getting info from file, {Filename, Reason}", [Filename, Reason]),
 			unknown
 	end.
 
@@ -265,12 +280,12 @@ get_config_file_mtime(Filename) ->
 %%	Type = atom()
 %%	Value = atom() | list() | integer() | float()
 %%
-get_defaults(Modules) ->
-	load_defaults(Modules, []).
+get_defaults(LogFun, Modules) ->
+	load_defaults(LogFun, Modules, []).
 	
 
 
-load_defaults([], Acc) ->
+load_defaults(_LogFun, [], Acc) ->
 	Acc;
 
 %% @doc Load defaults
@@ -281,103 +296,103 @@ load_defaults([], Acc) ->
 %% where
 %%	Modules = [atom()]
 %%
-load_defaults([Module|Modules], Acc) ->
+load_defaults(LogFun, [Module|Modules], Acc) ->
 	Server=get_module_server(Module),
 	case Server of
 		undefined ->
-			?LOG:log(debug, "load_defaults: cannot access 'module server name' for module: ", [Module]),
-			load_defaults(Modules, Acc);
+			log(LogFun, debug, "load_defaults: cannot access 'module server name' for module: ", [Module]),
+			load_defaults(LogFun, Modules, Acc);
 		ServerName ->
-			Defaults=try_load_module_defaults(Module),
+			Defaults=try_load_module_defaults(LogFun, Module),
 			%io:format("load_defaults: Module[~p] Defaults[~p]~n",[Module, Defaults]),	
-			List=try_check_defaults(Defaults, []),
+			List=try_check_defaults(LogFun, Defaults, []),
 			FilteredList=filter_entries(List, []),
-			load_defaults(Modules, Acc++[{ServerName, FilteredList}])
+			load_defaults(LogFun, Modules, Acc++[{ServerName, FilteredList}])
 	end.
 	
 
 
-try_load_module_defaults(Module) ->
+try_load_module_defaults(LogFun, Module) ->
 	try
 		erlang:apply(Module, defaults, [])
 	catch
 		_:_ ->
-			?LOG:log(debug, "config: no defaults for module: ", [Module]),
+			log(LogFun, debug, "config: no defaults for module: ", [Module]),
 			[]
 	end.
 
 
-try_check_defaults([], []) ->
+try_check_defaults(_, [], []) ->
 	[];
 
-try_check_defaults([], List) ->
+try_check_defaults(_, [], List) ->
 	List;
 
-try_check_defaults(Defaults, List) when is_list(Defaults) ->
+try_check_defaults(LogFun, Defaults, List) when is_list(Defaults) ->
 	[Default|Rest]=Defaults,
 	
 	%% Entry format 'envelope' check
-	Entry= check1_one_default(Default),
+	Entry= check1_one_default(LogFun, Default),
 	
 	%% Entry 'elements' format check
-	E1= check2_one_default(Entry),
+	E1= check2_one_default(LogFun, Entry),
 	
 	%% type check
-	E2= check3_one_default(E1),
-	try_check_defaults(Rest, List++[E2]).
+	E2= check3_one_default(LogFun, E1),
+	try_check_defaults(LogFun, Rest, List++[E2]).
 
 
-check1_one_default({}) -> {};
+check1_one_default(_, {}) -> {};
 
-check1_one_default(Default) when is_tuple(Default) ->
+check1_one_default(LogFun, Default) when is_tuple(Default) ->
 	try
 		{Key, Level, Type, Value} = Default,
 		{Key, Level, Type, Value}
 	catch
 		_:_ ->
-			?LOG:log(debug, "config: invalid entry format: ", [Default]),
+			log(LogFun, debug, "config: invalid entry format: ", [Default]),
 			{}
 	end;
 
-check1_one_default(Default) ->
-	?LOG:log(debug, "config: invalid default entry: ", [Default]),
+check1_one_default(LogFun, Default) ->
+	log(LogFun, debug, "config: invalid default entry: ", [Default]),
 	{}.
 
 
 
-check2_one_default({Key, Level, Type, Value}) when is_atom(Key), is_atom(Level), is_atom(Type) ->
+check2_one_default(_, {Key, Level, Type, Value}) when is_atom(Key), is_atom(Level), is_atom(Type) ->
 	{Key, Level, Type, Value};
 
-check2_one_default(Entry) ->
-	?LOG:log(debug, "config: invalid default entry: ", [Entry]),
+check2_one_default(LogFun, Entry) ->
+	log(LogFun, debug, "config: invalid default entry: ", [Entry]),
 	{}.
 
 
 
-check3_one_default({Key, Level, Type, Value}) when Type==string ->
+check3_one_default(LogFun, {Key, Level, Type, Value}) when Type==string ->
 	case is_list(Value) of
 		true ->	{Key, Level, Type, Value};
-		false -> ?LOG:log(debug, "config: expecting 'string' for Key: ", [Key]), {}
+		false -> log(LogFun, debug, "config: expecting 'string' for Key: ", [Key]), {}
 	end;
-check3_one_default({Key, Level, Type, Value}) when Type==nstring ->
+check3_one_default(LogFun, {Key, Level, Type, Value}) when Type==nstring ->
 	case is_list(Value) of
 		true ->	{Key, Level, Type, Value};
-		false -> ?LOG:log(debug, "config: expecting 'nstring' for Key: ", [Key]), {}
+		false -> log(LogFun, debug, "config: expecting 'nstring' for Key: ", [Key]), {}
 	end;
-check3_one_default({Key, Level, Type, Value}) when Type==int ->
+check3_one_default(LogFun, {Key, Level, Type, Value}) when Type==int ->
 	case is_integer(Value) of
 		true ->	{Key, Level, Type, Value};
-		false -> ?LOG:log(debug, "config: expecting 'int' for Key: ", [Key]), {}
+		false -> log(LogFun, debug, "config: expecting 'int' for Key: ", [Key]), {}
 	end;
-check3_one_default({Key, Level, Type, Value}) when Type==float ->
+check3_one_default(LogFun, {Key, Level, Type, Value}) when Type==float ->
 	case is_float(Value) of
 		true ->	{Key, Level, Type, Value};
-		false -> ?LOG:log(debug, "config: expecting 'float' for Key: ", [Key]), {}
+		false -> log(LogFun, debug, "config: expecting 'float' for Key: ", [Key]), {}
 	end;
-check3_one_default({Key, Level, Type, Value}) when Type==atom ->
+check3_one_default(LogFun, {Key, Level, Type, Value}) when Type==atom ->
 	case is_atom(Value) of
 		true ->	{Key, Level, Type, Value};
-		false -> ?LOG:log(debug, "config: expecting 'atom' for Key: ", [Key]), {}
+		false -> log(LogFun, debug, "config: expecting 'atom' for Key: ", [Key]), {}
 	end.
 
 
@@ -507,18 +522,18 @@ get_module_server(Module) ->
 %%
 %% @spec merge(Defaults, Config) -> [tuple()]
 %%
-merge(Defaults, Config) ->
+merge(LogFun, Defaults, Config) ->
 	%io:format("merge: defaults<~p>~n", [Defaults]),
 	%io:format("merge: config<~p>~n", [Config]),
 	
 	% start with all the Defaults in list
-	do_merge(Config, Defaults).
+	do_merge(LogFun, Config, Defaults).
 
 
-do_merge([], Acc) ->
+do_merge(_, [], Acc) ->
 	Acc;
 
-do_merge([ConfigEntry|ConfigEntries], Acc) ->
+do_merge(LogFun, [ConfigEntry|ConfigEntries], Acc) ->
 	%io:format("do_merge: ce[~p]~n", [ConfigEntry]),
 	
 	try
@@ -527,15 +542,15 @@ do_merge([ConfigEntry|ConfigEntries], Acc) ->
 		ModuleName=extract_module_name(ParamName),
 		%io:format("do_merge: moduleName[~p]~n",[ModuleName]),
 		NewList=insert_entry(ModuleName, ParamName, Value, Acc),
-		do_merge(ConfigEntries, NewList)
+		do_merge(LogFun, ConfigEntries, NewList)
 	catch
 		_:_ ->
-			?LOG:log(error, "config: error whilst merging defaults+config"),
+			log(LogFun, error, "config: error whilst merging defaults+config"),
 			{error, merging}
 	end;
 
-do_merge(Other, _) ->
-	?LOG:log(critial, "config: exception whilst merging: ", [Other]).
+do_merge(LogFun, Other, _) ->
+	log(LogFun, critial, "config: exception whilst merging: ", [Other]).
 
 
 insert_entry(ModuleName, ParamName, Value, List) ->
@@ -572,6 +587,8 @@ get_module_entries(ModuleName, [Entry|Rest], Acc) ->
 	end.
 
 
+
+
 put_config(Version, ConfigData) ->
 	put(config.version, Version),
 	put_config(ConfigData).
@@ -581,12 +598,7 @@ put_config([]) ->
 	
 put_config(ConfigData) when is_list(ConfigData) ->
 	[Entry|Entries] = ConfigData,
-	try
-		put_config_one(Entry)
-	catch 
-		_:_ ->
-			?LOG:log(critical, "put_config: error with Entry: ", [Entry])
-	end,
+	put_config_one(Entry),
 	put_config(Entries);
 	
 put_config(_) ->
@@ -599,6 +611,9 @@ put_config_one({Param, _Level, _Type, Value}) ->
 %% For entries from Configuration File
 put_config_one({Param, Value}) ->
 	put(Param, Value).
+
+
+
 
 
 %% ----------------------          ------------------------------
@@ -632,30 +647,30 @@ maybe_ask_for_config(Switch, Server, _, _) -> do_publish_config_version(Switch, 
 
 
 
-check_limits([], _Defaults, Acc) ->
+check_limits(_, [], _Defaults, Acc) ->
 	Acc;
 
-check_limits([ConfigEntry|Entries], Defaults, Acc) ->
-	Entry=check_limit_one(ConfigEntry, Defaults),
-	check_limits(Entries, Defaults, Acc++[Entry]).
+check_limits(LogFun, [ConfigEntry|Entries], Defaults, Acc) ->
+	Entry=check_limit_one(LogFun, ConfigEntry, Defaults),
+	check_limits(LogFun, Entries, Defaults, Acc++[Entry]).
 
 
 
-check_limit_one({Key, Value}, Defaults) ->
+check_limit_one(LogFun, {Key, Value}, Defaults) ->
 	Default=get_var_in_defaults(Key, Defaults),
 	case Default of 
 		undefined ->
-			?LOG:log(debug, "config: missing default for key: ", [Key]);
+			log(LogFun, debug, "config: missing default for key: ", [Key]);
 		{{_, Entries}, {_, _Level, int, _Default}} ->
 			MinResult=get_min(Entries, Key),
 			MaxResult=get_max(Entries, Key),
 			%io:format("check_limit_one2: key[~p] val[~p] min[~p] max[~p]~n", [Key, Value, MinResult, MaxResult]),
-			check_limit_one2({Key, Value}, MinResult, MaxResult);
+			check_limit_one2(LogFun, {Key, Value}, MinResult, MaxResult);
 		{{_, Entries}, {_, _Level, float, _Default}} ->
 			MinResult=get_min(Entries, Key),
 			MaxResult=get_max(Entries, Key),
 			%io:format("check_limit_one2: key[~p] val[~p] min[~p] max[~p]~n", [Key, Value, MinResult, MaxResult]),
-			check_limit_one2({Key, Value}, MinResult, MaxResult);
+			check_limit_one2(LogFun, {Key, Value}, MinResult, MaxResult);
 		_ ->
 			type_without_limit_check,
 			{Key, Value}
@@ -663,54 +678,54 @@ check_limit_one({Key, Value}, Defaults) ->
 	
 
 %% shouldn't get here...
-check_limit_one(_, _Defaults) ->
+check_limit_one(_, _, _Defaults) ->
 	ok.
 
-check_limit_one2({Key, Value}, {}, {}) ->
-	?LOG:log(debug, "config: missing 'min' default for key: ", [Key]), 
-	?LOG:log(debug, "config: missing 'max' default for key: ", [Key]),
+check_limit_one2(LogFun, {Key, Value}, {}, {}) ->
+	log(LogFun, debug, "config: missing 'min' default for key: ", [Key]), 
+	log(LogFun, debug, "config: missing 'max' default for key: ", [Key]),
 	{Key, Value};
 
-check_limit_one2({Key, Value}, Result, {}) ->
+check_limit_one2(LogFun, {Key, Value}, Result, {}) ->
 	Limit=get_value(Result),
-	?LOG:log(debug, "config: missing 'max' default for key: ", [Key]),
-	check_limit(min, {Key, Value}, Limit);
+	log(LogFun, debug, "config: missing 'max' default for key: ", [Key]),
+	check_limit(LogFun, min, {Key, Value}, Limit);
 
-check_limit_one2({Key, Value}, {}, Result) ->
+check_limit_one2(LogFun, {Key, Value}, {}, Result) ->
 	Limit=get_value(Result),
-	?LOG:log(debug, "config: missing 'min' default for key: ", [Key]),
-	check_limit(max, {Key, Value}, Limit);
+	log(LogFun, debug, "config: missing 'min' default for key: ", [Key]),
+	check_limit(LogFun, max, {Key, Value}, Limit);
 
 
-check_limit_one2({Key, Value}, MinResult, MaxResult) ->
+check_limit_one2(LogFun, {Key, Value}, MinResult, MaxResult) ->
 	MinV=get_value(MinResult),
 	MaxV=get_value(MaxResult),
 	%io:format("check_limit_one2: minv[~p] maxv[~p]~n", [MinV, MaxV]),
-	{K1, V1}=check_limit(min, {Key, Value}, MinV),
-	check_limit(max, {K1, V1}, MaxV).
+	{K1, V1}=check_limit(LogFun, min, {Key, Value}, MinV),
+	check_limit(LogFun, max, {K1, V1}, MaxV).
 
 
 
 
-check_limit(max, {Key, Value}, {_, Limit}) when (is_integer(Value) or is_float(Value)) 
+check_limit(LogFun, max, {Key, Value}, {_, Limit}) when (is_integer(Value) or is_float(Value)) 
   											and (is_integer(Limit) or is_float(Limit)) ->
 	case Value > Limit of
-		true ->	?LOG:log(error, "config: value 'too high' {Key, Value, MaxValue} ", [Key, Value, Limit]), 
+		true ->	log(LogFun, error, "config: value 'too high' {Key, Value, MaxValue} ", [Key, Value, Limit]), 
 				{Key, Limit};
 		false->	{Key, Value}
 	end;
 
 
-check_limit(min, {Key, Value}, {_, Limit}) when (is_integer(Value) or is_float(Value)) 
+check_limit(LogFun, min, {Key, Value}, {_, Limit}) when (is_integer(Value) or is_float(Value)) 
   											and (is_integer(Limit) or is_float(Limit)) ->
 	case Value < Limit of
-		true ->	?LOG:log(error, "config: value 'too low' {Key, Value, MinValue} ", [Key, Value, Limit]), 
+		true ->	log(LogFun, error, "config: value 'too low' {Key, Value, MinValue} ", [Key, Value, Limit]), 
 				{Key, Limit};
 		false->	{Key, Value}
 	end;
 
-check_limit(_, {Key, _Value}, Limit) ->
-	?LOG:log(error, "config: invalid default value for {Key, DefaultValue}: ", [[Key, Limit]]),
+check_limit(LogFun, _, {Key, _Value}, Limit) ->
+	log(LogFun, error, "config: invalid default value for {Key, DefaultValue}: ", [[Key, Limit]]),
 	{Key, Limit}.
 
 
@@ -760,16 +775,6 @@ get_value(_) -> error.
 
 
 
-config_filename() ->
-	Home=os:getenv("HOME"),
-	config_filename(Home).
-	
-config_filename(false) ->
-	error;
-
-config_filename(Home) ->
-	Home++"/"++?CONFIG_FILENAME.
-
 	
 
 
@@ -777,7 +782,3 @@ config_filename(Home) ->
 %% ----------------------        ------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%%  TEST  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ----------------------        ------------------------------
-
-test() ->
-	Modules=[twitter_app, twitter_log, twitter],
-	do_config(Modules).	
