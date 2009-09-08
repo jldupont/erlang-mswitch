@@ -13,38 +13,351 @@
 
 
 <h2><a name="index">Function Index</a></h2>
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#extract_host-0">extract_host/0</a></td><td></td></tr>
-<tr><td valign="top"><a href="#getvar-2">getvar/2</a></td><td></td></tr>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_to_tuple_list-3">add_to_tuple_list/3</a></td><td>Adds an Element	to a specific tuple in a List
+ 		whilst respecting uniqueness.</td></tr>
+<tr><td valign="top"><a href="#add_to_var-2">add_to_var/2</a></td><td>Adds a term Value to a Value list
+ 		in the process dictionary.</td></tr>
+<tr><td valign="top"><a href="#check_pattern-2">check_pattern/2</a></td><td>Verifies if Key string contains atom Pattern.</td></tr>
+<tr><td valign="top"><a href="#code_to_phrase-1">code_to_phrase/1</a></td><td>HTTP Code to human readable string.</td></tr>
+<tr><td valign="top"><a href="#concat_atoms-2">concat_atoms/2</a></td><td>Concatenates two atom() to form a single atom().</td></tr>
+<tr><td valign="top"><a href="#encode_list-1">encode_list/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#encode_tuple-2">encode_tuple/2</a></td><td>URL encode a tuple {Key, Value} as Key=Value.</td></tr>
+<tr><td valign="top"><a href="#extract_head-1">extract_head/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#extract_host-0">extract_host/0</a></td><td>Extracts the "host" part of the running node
+  		i.e.</td></tr>
+<tr><td valign="top"><a href="#extract_tail-1">extract_tail/1</a></td><td>Extracts the 'tail' of an atom by tokenizing
+ 		the said atom using the SeparatorList.</td></tr>
+<tr><td valign="top"><a href="#filter_on_patterns-3">filter_on_patterns/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#force_list-1">force_list/1</a></td><td>Forces an atom() to a list().</td></tr>
+<tr><td valign="top"><a href="#gen_auth_header-2">gen_auth_header/2</a></td><td>Generate an HTTP compatible "basic authentication" header.</td></tr>
+<tr><td valign="top"><a href="#get_special-3">get_special/3</a></td><td>Retrieves the complete tuple matching Key.</td></tr>
+<tr><td valign="top"><a href="#getvar-2">getvar/2</a></td><td>Retrieves the Value of a VarName in the process dictionary
+  and returns Default is not found.</td></tr>
 <tr><td valign="top"><a href="#getvar-3">getvar/3</a></td><td></td></tr>
-<tr><td valign="top"><a href="#make_node-1">make_node/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#has_pattern-2">has_pattern/2</a></td><td>Verifies if Key contains any of Patterns.</td></tr>
+<tr><td valign="top"><a href="#head-1">head/1</a></td><td>Returns the Head of a list even an empty one;
+ 		erlang:hd barks at empty list.</td></tr>
+<tr><td valign="top"><a href="#head_pair-2">head_pair/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#http_extract-2">http_extract/2</a></td><td>Extracts various fields from an HTTP Response issued		 
+by the 'inets' module 'httpc' service.</td></tr>
+<tr><td valign="top"><a href="#is_alive-1">is_alive/1</a></td><td>Returns atom(true) if the process with the registered Name is alive.</td></tr>
+<tr><td valign="top"><a href="#isdebug-0">isdebug/0</a></td><td>Returns atom(true) if the process dictionary
+ 		variable 'debug' is found.</td></tr>
+<tr><td valign="top"><a href="#kfind-2">kfind/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#kfind-3">kfind/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#make_atom_from_list-1">make_atom_from_list/1</a></td><td>Concatenates elements from the list
+ 		into one atom.</td></tr>
+<tr><td valign="top"><a href="#make_list-1">make_list/1</a></td><td>Forces a term() to a list() form IFF
+ 		the said term isn't already a list.</td></tr>
+<tr><td valign="top"><a href="#make_node-1">make_node/1</a></td><td>Makes a "short name" node from a Name
+ 		e.g.</td></tr>
+<tr><td valign="top"><a href="#msg-1">msg/1</a></td><td>Outputs Message if 'debug' variable
+ 		is defined in the process dictionary.</td></tr>
+<tr><td valign="top"><a href="#msg-2">msg/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#rem_from_tuple_list-3">rem_from_tuple_list/3</a></td><td>Removes a tuple from list.</td></tr>
+<tr><td valign="top"><a href="#rem_from_var-2">rem_from_var/2</a></td><td>Removes a term Value from a Value list
+ 		in the proces dictionary.</td></tr>
+<tr><td valign="top"><a href="#tern-4">tern/4</a></td><td>Ternary operator
+ 		If 'Var==Value' then 'True' else 'False'.</td></tr>
+<tr><td valign="top"><a href="#to_atom-1">to_atom/1</a></td><td>Coerces a term() to an atom() representation.</td></tr>
+<tr><td valign="top"><a href="#to_string-1">to_string/1</a></td><td>Converts a term() to a string().</td></tr>
+<tr><td valign="top"><a href="#url_encode-1">url_encode/1</a></td><td>URL Encode.</td></tr>
+<tr><td valign="top"><a href="#vsize-1">vsize/1</a></td><td>Returns the 'size' of the following term() types:
+ 		atom(), list(), tuple().</td></tr>
 </table>
 
 <h2><a name="functions">Function Details</a></h2>
 
+<h3 class="function"><a name="add_to_tuple_list-3">add_to_tuple_list/3</a></h3>
+<div class="spec">
+<p><tt>add_to_tuple_list(List, TupleName, Element) -&gt; TupleList</tt>
+<ul class="definitions"><li><tt>List = list()</tt></li>
+<li><tt>TupleName = atom()</tt></li>
+<li><tt>Element = term()</tt></li>
+<li><tt>TupleList = [{ItemName, ItemValue}]</tt></li>
+<li><tt>ItemName = atom()</tt></li>
+<li><tt>ItemValue = term()</tt></li>
+</ul></p>
+</div><p>Adds an Element	to a specific tuple in a List
+ 		whilst respecting uniqueness.
+ </p>
+
+<h3 class="function"><a name="add_to_var-2">add_to_var/2</a></h3>
+<div class="spec">
+<p><tt>add_to_var(VarName, VarValue) -&gt; <a href="#type-void">void()</a></tt>
+<ul class="definitions"><li><tt>VarName = atom()</tt></li>
+<li><tt>VarValue = term()</tt></li>
+</ul></p>
+</div><p>Adds a term Value to a Value list
+ 		in the process dictionary.
+ </p>
+
+<h3 class="function"><a name="check_pattern-2">check_pattern/2</a></h3>
+<div class="spec">
+<p><tt>check_pattern(Pattern, Key) -&gt; true | false</tt>
+<ul class="definitions"><li><tt>Pattern = atom()</tt></li>
+<li><tt>Key = atom()</tt></li>
+</ul></p>
+</div><p>Verifies if Key string contains atom Pattern
+ </p>
+
+<h3 class="function"><a name="code_to_phrase-1">code_to_phrase/1</a></h3>
+<div class="spec">
+<p><tt>code_to_phrase(X1::integer()) -&gt; string()</tt></p>
+</div><p>HTTP Code to human readable string
+ </p>
+
+<h3 class="function"><a name="concat_atoms-2">concat_atoms/2</a></h3>
+<div class="spec">
+<p><tt>concat_atoms(A1, A2) -&gt; atom()</tt>
+<ul class="definitions"><li><tt>A1 = atom()</tt></li>
+<li><tt>A2 = atom()</tt></li>
+</ul></p>
+</div><p>Concatenates two atom() to form a single atom()
+ </p>
+
+<h3 class="function"><a name="encode_list-1">encode_list/1</a></h3>
+<div class="spec">
+<p><tt>encode_list(T) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="encode_tuple-2">encode_tuple/2</a></h3>
+<div class="spec">
+<p><tt>encode_tuple(Key, Value) -&gt; string()</tt>
+<ul class="definitions"><li><tt>Key = atom()</tt></li>
+<li><tt>Value = atom()</tt></li>
+</ul></p>
+</div><p>URL encode a tuple {Key, Value} as Key=Value
+ </p>
+
+<h3 class="function"><a name="extract_head-1">extract_head/1</a></h3>
+<div class="spec">
+<p><tt>extract_head(Atom) -&gt; any()</tt></p>
+</div>
+
 <h3 class="function"><a name="extract_host-0">extract_host/0</a></h3>
 <div class="spec">
 <p><tt>extract_host() -&gt; string()</tt></p>
+</div><p>Extracts the "host" part of the running node
+  		i.e.  Host@Node
+ </p>
+
+<h3 class="function"><a name="extract_tail-1">extract_tail/1</a></h3>
+<div class="spec">
+<p><tt>extract_tail(Atom::atom()) -&gt; atom()</tt></p>
+</div><p>Extracts the 'tail' of an atom by tokenizing
+ 		the said atom using the SeparatorList. The
+ 		default SeparatorList consists of ".".
+ </p>
+
+<h3 class="function"><a name="filter_on_patterns-3">filter_on_patterns/3</a></h3>
+<div class="spec">
+<p><tt>filter_on_patterns(Patterns, List, Acc) -&gt; any()</tt></p>
 </div>
+
+<h3 class="function"><a name="force_list-1">force_list/1</a></h3>
+<div class="spec">
+<p><tt>force_list(Key::atom()) -&gt; list()</tt></p>
+</div><p>Forces an atom() to a list()
+ </p>
+
+<h3 class="function"><a name="gen_auth_header-2">gen_auth_header/2</a></h3>
+<div class="spec">
+<p><tt>gen_auth_header(Username, Password) -&gt; string()</tt>
+<ul class="definitions"><li><tt>Username = string()</tt></li>
+<li><tt>Password = string()</tt></li>
+</ul></p>
+</div><p>Generate an HTTP compatible "basic authentication" header
+ </p>
+
+<h3 class="function"><a name="get_special-3">get_special/3</a></h3>
+<div class="spec">
+<p><tt>get_special(List, Pattern, Key) -&gt; tuple() | {}</tt>
+<ul class="definitions"><li><tt>List = [tuple()]</tt></li>
+<li><tt>Pattern = atom()</tt></li>
+<li><tt>Key = atom()</tt></li>
+</ul></p>
+</div><p>Retrieves the complete tuple matching Key
+ </p>
 
 <h3 class="function"><a name="getvar-2">getvar/2</a></h3>
 <div class="spec">
 <p><tt>getvar(VarName, Default) -&gt; Value | Default</tt>
-<ul class="definitions"><li><tt>Value = atom() | string() | integer() | float()</tt></li>
+<ul class="definitions"><li><tt>VarName = atom()</tt></li>
+<li><tt>Value = term()</tt></li>
+<li><tt>Default = term()</tt></li>
 </ul></p>
-</div>
+</div><p>Retrieves the Value of a VarName in the process dictionary
+  and returns Default is not found.
+ </p>
 
 <h3 class="function"><a name="getvar-3">getvar/3</a></h3>
 <div class="spec">
 <p><tt>getvar(VarName, VarValue, Default) -&gt; any()</tt></p>
 </div>
 
+<h3 class="function"><a name="has_pattern-2">has_pattern/2</a></h3>
+<div class="spec">
+<p><tt>has_pattern(Patterns, Key) -&gt; true | false</tt>
+<ul class="definitions"><li><tt>Key = atom()</tt></li>
+<li><tt>Patterns = [atom()]</tt></li>
+</ul></p>
+</div><p>Verifies if Key contains any of Patterns
+ </p>
+
+<h3 class="function"><a name="head-1">head/1</a></h3>
+<div class="spec">
+<p><tt>head(Liste::list()) -&gt; term()</tt></p>
+</div><p>Returns the Head of a list even an empty one;
+ 		erlang:hd barks at empty list.
+ </p>
+
+<h3 class="function"><a name="head_pair-2">head_pair/2</a></h3>
+<div class="spec">
+<p><tt>head_pair(Liste, DefaultSecond) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="http_extract-2">http_extract/2</a></h3>
+<div class="spec">
+<p><tt>http_extract(Result, X2) -&gt; any()</tt></p>
+</div><p><p>Extracts various fields from an HTTP Response issued		 
+by the 'inets' module 'httpc' service.</p>
+ 
+  Result = {{HttpVersion, HttpCode, HttpResponseCode}, [Headers], ResponseBody}
+  HttpVersion = string()         (eg. "HTTP/1.1")
+  HttpCode = integer()           (eg. "200")
+  HttpResponseCode = string()    (eg. "OK")
+  Headers = {key, value}, {key, value} ...
+  ResponseBody = string()</p>
+
+<h3 class="function"><a name="is_alive-1">is_alive/1</a></h3>
+<div class="spec">
+<p><tt>is_alive(Name) -&gt; true | false</tt>
+<ul class="definitions"><li><tt>Name = atom()</tt></li>
+</ul></p>
+</div><p>Returns atom(true) if the process with the registered Name is alive
+ </p>
+
+<h3 class="function"><a name="isdebug-0">isdebug/0</a></h3>
+<div class="spec">
+<p><tt>isdebug() -&gt; true | false</tt></p>
+</div><p>Returns atom(true) if the process dictionary
+ 		variable 'debug' is found.
+ </p>
+
+<h3 class="function"><a name="kfind-2">kfind/2</a></h3>
+<div class="spec">
+<p><tt>kfind(Key, List) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="kfind-3">kfind/3</a></h3>
+<div class="spec">
+<p><tt>kfind(Key, List, Default) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="make_atom_from_list-1">make_atom_from_list/1</a></h3>
+<div class="spec">
+<p><tt>make_atom_from_list(List) -&gt; Result</tt>
+<ul class="definitions"><li><tt>List = [atom()] | [string()]</tt></li>
+<li><tt>Result = list()</tt></li>
+</ul></p>
+</div><p>Concatenates elements from the list
+ 		into one atom.
+ </p>
+
+<h3 class="function"><a name="make_list-1">make_list/1</a></h3>
+<div class="spec">
+<p><tt>make_list(List::Term) -&gt; list()</tt>
+<ul class="definitions"><li><tt>Term = term()</tt></li>
+</ul></p>
+</div><p>Forces a term() to a list() form IFF
+ 		the said term isn't already a list.
+ </p>
+
 <h3 class="function"><a name="make_node-1">make_node/1</a></h3>
 <div class="spec">
-<p><tt>make_node(Name) -&gt; string()</tt></p>
+<p><tt>make_node(Name) -&gt; string()</tt>
+<ul class="definitions"><li><tt>Name = atom()</tt></li>
+</ul></p>
+</div><p>Makes a "short name" node from a Name
+ 		e.g. Name@Node
+ </p>
+
+<h3 class="function"><a name="msg-1">msg/1</a></h3>
+<div class="spec">
+<p><tt>msg(Message) -&gt; <a href="#type-void">void()</a></tt>
+<ul class="definitions"><li><tt>Message = term()</tt></li>
+</ul></p>
+</div><p>Outputs Message if 'debug' variable
+ 		is defined in the process dictionary.
+ </p>
+
+<h3 class="function"><a name="msg-2">msg/2</a></h3>
+<div class="spec">
+<p><tt>msg(Message, Params) -&gt; any()</tt></p>
 </div>
+
+<h3 class="function"><a name="rem_from_tuple_list-3">rem_from_tuple_list/3</a></h3>
+<div class="spec">
+<p><tt>rem_from_tuple_list(List, GroupName, TupleName) -&gt; list()</tt>
+<ul class="definitions"><li><tt>List = [tuple()]</tt></li>
+<li><tt>GroupName = atom()</tt></li>
+<li><tt>TupleName = atom()</tt></li>
+</ul></p>
+</div><p>Removes a tuple from list
+ </p>
+
+<h3 class="function"><a name="rem_from_var-2">rem_from_var/2</a></h3>
+<div class="spec">
+<p><tt>rem_from_var(VarName, VarValue) -&gt; <a href="#type-void">void()</a></tt>
+<ul class="definitions"><li><tt>VarName = atom()</tt></li>
+<li><tt>VarValue = term()</tt></li>
+</ul></p>
+</div><p>Removes a term Value from a Value list
+ 		in the proces dictionary.
+ </p>
+
+<h3 class="function"><a name="tern-4">tern/4</a></h3>
+<div class="spec">
+<p><tt>tern(Var, Value, True, False) -&gt; True | False</tt>
+<ul class="definitions"><li><tt>Var = term()</tt></li>
+<li><tt>Value = term()</tt></li>
+<li><tt>True = term()</tt></li>
+<li><tt>False = term()</tt></li>
+</ul></p>
+</div><p>Ternary operator
+ 		If 'Var==Value' then 'True' else 'False'
+ </p>
+
+<h3 class="function"><a name="to_atom-1">to_atom/1</a></h3>
+<div class="spec">
+<p><tt>to_atom(V::term()) -&gt; atom()</tt></p>
+</div><p>Coerces a term() to an atom() representation
+ </p>
+
+<h3 class="function"><a name="to_string-1">to_string/1</a></h3>
+<div class="spec">
+<p><tt>to_string(StringTerm::term()) -&gt; list()</tt></p>
+</div><p>Converts a term() to a string()
+ </p>
+
+<h3 class="function"><a name="url_encode-1">url_encode/1</a></h3>
+<div class="spec">
+<p><tt>url_encode(T::term()) -&gt; string()</tt></p>
+</div><p>URL Encode
+ </p>
+
+<h3 class="function"><a name="vsize-1">vsize/1</a></h3>
+<div class="spec">
+<p><tt>vsize(Atom::Term) -&gt; integer() | undefined</tt>
+<ul class="definitions"><li><tt>Term = atom() | list() | tuple()</tt></li>
+</ul></p>
+</div><p>Returns the 'size' of the following term() types:
+ 		atom(), list(), tuple().
+ </p>
 <hr>
 
 <div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
-<p><i>Generated by EDoc, Sep 4 2009, 15:02:10.</i></p>
+<p><i>Generated by EDoc, Sep 7 2009, 21:05:10.</i></p>
 </body>
 </html>
