@@ -108,3 +108,7 @@ Subscribers receive Message through their registered server process using a smal
    <li>Added 'mswitch_ctools': helper functions for configuring mswitch apps</li>
   </ul>
   
+  ===2.3===
+  Fixed issue with 'url_encode' in mswitch_tools
+  
+  
