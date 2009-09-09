@@ -316,10 +316,6 @@ url_encode([H|T]) ->
         H == $_; H == $.; H == $-; H == $/;	H == $:; H == ${; H == $} -> % FIXME: more..
             [H|url_encode(T)];
 
-		%%jld		
-		%erlang:is_list(H) ->
-		%	url_encode(lists:flatten(H)++T);
-
 		%%jld
 		is_tuple(H) ->
 			FT=io_lib:format("~p", [H]),
@@ -327,7 +323,7 @@ url_encode([H|T]) ->
 
 
         true ->
-			io:format("integer_to_hex: ~p~n", [H]),
+			%io:format("integer_to_hex: ~p~n", [H]),
             case integer_to_hex(H) of
                 [X, Y] ->
                     [$%, X, Y | url_encode(T)];
