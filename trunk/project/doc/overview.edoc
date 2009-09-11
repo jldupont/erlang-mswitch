@@ -113,3 +113,8 @@ Subscribers receive Message through their registered server process using a smal
   
   ===2.4===
   Fixed init script
+
+  ===2.5===
+  Function "mswitch_ctools:config" now loads default configuration if no configuration is available
+  instead of spewing an error.
+
