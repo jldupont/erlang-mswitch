@@ -38,6 +38,7 @@
 		 loop/0, call/2,
 		 handle/3, send/4, reply/2,
 		 set_code_path/0
+		,mailbox/1
 		 ]).
 %% ----------------------                 ------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%% MANAGEMENT API  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -94,10 +95,10 @@ add_cwd() ->
 %% @spec subscribe(MailBox, Bus) -> {ServerPid, ok} | {error, Reason}
 %%
 %% Bus = atom() | [atom()]
-%% MailBox = {Module, Function, Server}
+%% MailBox = {Module, Function, Server} | Server
+%% Server = atom() | pid()
 %% Module = atom()
 %% Function = atom()
-%% Server = atom()
 %%
 %% ServerPid = pid()
 %% Reason = rpcerror | mswitch_node_down | invalid_bus | invalid_mailbox
@@ -115,6 +116,20 @@ subscribe({Module, Function, Server}, Bus) ->
 	MailBox={Module, Function, Server},
 	Ret=rpc({subscribe, MailBox, Bus}),
 	sync({subscribe, MailBox, Bus, Ret});
+
+%% @doc Subscribe to a Bus with message delivery directly to a Server
+%%
+%% @spec subscribe(Server, Bus) -> {ServerPid, ok} | {error, Reason}
+%% where
+%%	Server = atom() | pid()
+%%	Bus = atom() | [atom()]
+%%
+subscribe(Server, Bus) when is_atom(Server) or is_pid(Server) ->
+	MailBox={?MODULE, mailbox, Server},
+	Ret=rpc({subscribe, MailBox, Bus}),
+	sync({subscribe, MailBox, Bus, Ret});
+
+	
 
 subscribe(_, _) ->
 	{error, invalid_mailbox}.
@@ -257,6 +272,19 @@ dorpc(FromNode, RemoteNode, Message) ->
 	end.
 
 
+%% ----------------------                 ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% CENTRAL MAILBOX %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------                 ------------------------------
+
+
+
+mailbox({FromNode, Server, Bus, Message}) ->
+	try
+		Server ! {mswitch, FromNode, Bus, Message}
+	catch
+		_:_ -> noop
+	end.
+			
 
 
 

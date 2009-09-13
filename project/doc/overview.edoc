@@ -20,7 +20,7 @@ The mswitch daemon can be managed using the command-line script 'mswitch'.
 The API consists of the following functions:
 
 <ul>
- <li>subscribe(Bus, Mailbox)</li>
+ <li>subscribe(Mailbox, Bus)</li>
  <li>unsubscribe(Bus)</li>
  <li>publish(Bus, Message)</li>
 </ul>
@@ -39,12 +39,13 @@ This step is normally taken care of when installing from the Debian repository a
 To subscribe to a 'bus':
 
 	```
-		mswitch:subscribe(Bus, Mailbox)
+		mswitch:subscribe(Mailbox, Bus)
 	'''
 	where:
 	<ul>
 	 <li>'Bus' is any valid Erlang term (atom, string)</li>
-	 <li>'Mailbox' consists of a tuple {Module, Function, Server}</li>
+	 <li>'Mailbox' consists of a tuple {Module, Function, Server} or</li>
+	 <li>'Mailbox' consists of an registered atom() for the recipient Server</li> 
 	</ul>
 	
 	The 'Mailbox' is a Module:Function reachable by the Erlang emulator and 'Server' consists of
@@ -118,3 +119,5 @@ Subscribers receive Message through their registered server process using a smal
   Function "mswitch_ctools:config" now loads default configuration if no configuration is available
   instead of spewing an error.
 
+  ===2.6===
+  Added the 'central inbox' as to simplify subscription for clients. 
