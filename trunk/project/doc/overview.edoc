@@ -124,3 +124,6 @@ Subscribers receive Message through their registered server process using a smal
   
   ===2.7===
   Fixed 'init.d' script for good (thanks to Stackoverflow community!)
+
+  ===2.8===
+  Added 'compound types' ('tii', 'tiii') for the configuration tools
