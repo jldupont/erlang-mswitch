@@ -121,3 +121,6 @@ Subscribers receive Message through their registered server process using a smal
 
   ===2.6===
   Added the 'central inbox' as to simplify subscription for clients. 
+  
+  ===2.7===
+  Fixed 'init.d' script for good (thanks to Stackoverflow community!)
