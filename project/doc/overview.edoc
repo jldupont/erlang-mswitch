@@ -126,4 +126,4 @@ Subscribers receive Message through their registered server process using a smal
   Fixed 'init.d' script for good (thanks to Stackoverflow community!)
 
   ===2.8===
-  Added 'compound types' ('tii', 'tiii') for the configuration tools
+  Added 'compound types' ('tii', 'tiii', 'taa', 'tai', 'taii') for the configuration tools

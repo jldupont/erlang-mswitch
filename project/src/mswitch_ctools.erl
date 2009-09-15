@@ -234,6 +234,24 @@ check_type3(_LogFun, _Key, _Ckey, tiii,   Cvalue, _Dvalue) ->
 		_     -> invalid
 	end;
 
+check_type3(_LogFun, _Key, _Ckey, taa,   Cvalue, _Dvalue) ->
+	case ct_validate(taa, Cvalue) of
+		true  -> ok;
+		_     -> invalid
+	end;
+
+check_type3(_LogFun, _Key, _Ckey, tai,   Cvalue, _Dvalue) ->
+	case ct_validate(tai, Cvalue) of
+		true  -> ok;
+		_     -> invalid
+	end;
+
+check_type3(_LogFun, _Key, _Ckey, taii,   Cvalue, _Dvalue) ->
+	case ct_validate(taii, Cvalue) of
+		true  -> ok;
+		_     -> invalid
+	end;
+
 check_type3(_LogFun, _Key, _Ckey, atom,   Cvalue, _Dvalue) when is_atom(Cvalue)    -> ok;
 check_type3(_LogFun, _Key, _Ckey, string, Cvalue, _Dvalue) when is_list(Cvalue)    -> ok;
 check_type3(_LogFun, _Key, _Ckey, int,    Cvalue, _Dvalue) when is_integer(Cvalue) -> ok;
@@ -439,6 +457,50 @@ check3_one_default(LogFun, {Key, Level, Type, Value}) when Type==atom ->
 		false -> log(LogFun, debug, "config: expecting 'atom' for Key: ", [Key]), {}
 	end.
 
+
+
+%% @doc Validate Compound Type 'taa'
+%%		{atom(), atom()}
+%%
+ct_validate(taa, Value) when is_tuple(Value) ->
+	try
+		{V1, V2} = Value,
+		is_atom(V1) and is_atom(V2)
+	catch
+		_:_ -> false
+	end;
+
+ct_validate(taa, _) ->
+	false;
+
+%% @doc Validate Compound Type 'tai'
+%%		{atom(), int()}
+%%
+ct_validate(tai, Value) when is_tuple(Value) ->
+	try
+		{V1, V2} = Value,
+		is_atom(V1) and is_integer(V2)
+	catch
+		_:_ -> false
+	end;
+
+ct_validate(tai, _) ->
+	false;
+
+
+%% @doc Validate Compound Type 'taii'
+%%		{atom(), int(), int()}
+%%
+ct_validate(taii, Value) when is_tuple(Value) ->
+	try
+		{V1, V2, V3} = Value,
+		is_atom(V1) and is_integer(V2) and is_integer(V3)
+	catch
+		_:_ -> false
+	end;
+
+ct_validate(taii, _) ->
+	false;
 
 
 %% @doc Validate Compound Type 'tii'
