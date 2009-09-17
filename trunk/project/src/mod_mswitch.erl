@@ -1,6 +1,7 @@
 %% Author: Jean-Lou Dupont
 %% Created: 2009-09-17
-%% Description: TODO: Add description to mswitch_mod_mswitch
+%% Description: MSWITCH bridge
+%%
 -module(mod_mswitch).
 
 -behaviour(gen_server).
@@ -22,10 +23,11 @@
 
 -record(state, {host}).
 
--define(PROCNAME, ejabberd_mod_mswitch).
+-define(PROCNAME,       ejabberd_mod_mswitch).
 -define(MSWITCH,        mswitch).
 -define(MSWITCH_TOOLS,  mswitch_tools).
--define(LOG,      log).
+-define(LOG,            log).
+-define(TOOLS,          mswitch_mod_tools).
 
 
 %%====================================================================
@@ -105,7 +107,7 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info({route, From, To, Packet}, State) ->
-	safe_route(From, To, Packet),
+	maybe_route(From, To, Packet),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -137,8 +139,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 
-safe_route(From, To, _Packet) ->
-	?LOG(safe_route, "From: ~p To: ~p", [From, To]).
+%safe_route(From, To, Packet) ->
+	%?LOG(safe_route, "From: ~p To: ~p", [From, To]).
+%	?MSWITCH:publish(debug, {mod_mswitch, From, To, Packet}).
 
 
 
@@ -147,15 +150,163 @@ safe_route(From, To, _Packet) ->
 %%%%%%%%%%%%%%%%%%%%%%%%% LOG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ----------------------     ------------------------------
 
-log(Context, Msg, _Params) when is_atom(Context), is_list(Msg) ->
-	%List=?MSWITCH_TOOLS:make_list(Params),
-	%MessageFormat=erlang:atom_to_list(Context) ++ Msg,
-	%Message=io_lib:format(MessageFormat, List),
-	%?INFO_MSG("mod_mswitch MESSAGE: ~p", [Message]),	
-	%Ret=?MSWITCH:publish(debug, from_mod_mswitch),
-	%?INFO_MSG("from mswitch:publish: ~p", Ret).
-	?INFO_MSG("mod_mswitch: node info: ~p", [node()]).
+log(Context, Msg, Params) when is_atom(Context), is_list(Msg) ->
+	List=?MSWITCH_TOOLS:make_list(Params),
+	MessageFormat=erlang:atom_to_list(Context) ++ Msg,
+	Message=io_lib:format(MessageFormat, List),
+	?INFO_MSG("mod_mswitch MESSAGE: ~p", [Message]),	
+	Ret=?MSWITCH:publish(debug, {Context, Message}),
+	?INFO_MSG("from mswitch:publish: ~p", [Ret]).
+	%?INFO_MSG("mod_mswitch: node info: ~p", [node()]).
 
 
 	
-	
+%% @TODO filter/block
+%%
+maybe_route(From, To, Packet) ->
+    safe_route(From, To, Packet).
+
+
+
+safe_route(From, To, Packet) ->
+    case catch do_route(From, To, Packet) of
+	{'EXIT', Reason} ->
+	    ?ERROR_MSG("~p~nwhen processing: ~p",
+		       [Reason, {From, To, Packet}]);
+	_ ->
+	    ok
+    end.
+ 
+do_route(#jid{lserver = FromServer} = From,
+	 #jid{lserver = ToServer} = To,
+	 {xmlelement, "presence", _, _})
+  when FromServer == ToServer ->
+    %% Break tight loops by ignoring these presence packets.
+    ?WARNING_MSG("Tight presence loop between~n~p and~n~p~nbroken.",[From, To]),
+    ok;
+
+do_route(From, To, {xmlelement, "presence", _, _} = Packet) ->
+
+    case xml:get_tag_attr_s("type", Packet) of
+	"subscribe" ->
+	    ?TOOLS:send_presence(To, From, "subscribe");
+	"subscribed" ->
+	    sub(To, From),
+	    ?TOOLS:send_presence(To, From, "subscribed"),
+	    ?TOOLS:send_presence(To, From, "");
+	"unsubscribe" ->
+	    unsub(To, From),
+	    ?TOOLS:send_presence(To, From, "unsubscribed"),
+	    ?TOOLS:send_presence(To, From, "unsubscribe");
+	"unsubscribed" ->
+	    unsub(To, From),
+	    ?TOOLS:send_presence(To, From, "unsubscribed");
+ 
+	"" ->
+	    ?TOOLS:send_presence(To, From, ""),
+	    start_consumer(From, To#jid.lserver, extract_priority(Packet));
+	"unavailable" ->
+	    stop_consumer(From);
+ 
+	"probe" ->
+	    ?TOOLS:send_presence(To, From, "");
+ 
+	_Other ->
+	    ?INFO_MSG("Other kind of presence~n~p", [Packet])
+    end,
+    ok;
+
+do_route(From, To, {xmlelement, "message", _, _} = Packet) ->
+    case xml:get_subtag_cdata(Packet, "body") of
+	"" ->
+	    empty;
+	Body0 ->
+	    Body = strip_bom(Body0),
+	    case xml:get_tag_attr_s("type", Packet) of
+		"error" ->
+		    ?ERROR_MSG("Received error message~n~p -> ~p~n~p", [From, To, Packet]),
+			error;
+		_ ->
+		    send_command_reply(To, From, do_command(To, From, Body, parse_command(Body)))
+	    end
+    end,
+    ok;
+do_route(_From, _To, _Packet) ->
+    ?INFO_MSG("**** DROPPED~n~p~n~p~n~p", [_From, _To, _Packet]),
+    ok.
+
+ 
+
+strip_bom([239,187,191|C]) -> C;
+strip_bom(C) -> C.
+
+
+send_command_reply(From, To, {Status, Fmt, Args}) ->
+    send_command_reply(From, To, {Status, io_lib:format(Fmt, Args)});
+send_command_reply(From, To, {ok, ResponseIoList}) ->
+    send_chat(From, To, ResponseIoList);
+send_command_reply(From, To, {error, ResponseIoList}) ->
+    send_chat(From, To, ResponseIoList);
+send_command_reply(_From, _To, noreply) ->
+    ok.
+
+
+send_chat(From, To, {Fmt, Args}) ->
+    send_chat(From, To, io_lib:format(Fmt, Args));
+send_chat(From, To, IoList) ->
+    send_message(From, To, "chat", lists:flatten(IoList)).
+
+send_message(From, To, TypeStr, BodyStr) ->
+    XmlBody = {xmlelement, "message",
+	       [{"type", TypeStr},
+		{"from", jlib:jid_to_string(From)},
+		{"to", jlib:jid_to_string(To)}],
+	       [{xmlelement, "body", [],
+		 [{xmlcdata, BodyStr}]}]},
+    ?DEBUG("Delivering ~p -> ~p~n~p", [From, To, XmlBody]),
+    ejabberd_router:route(From, To, XmlBody).
+ 
+
+
+
+
+start_consumer(Urn, JID, Server, Priority) ->
+    case mnesia:transaction(
+	   fun () ->
+		   case mnesia:read({rabbiter_consumer_process, Urn}) of
+		       [#rabbiter_consumer_process{pid = Pid}] ->
+			   {existing, Pid};
+		       [] ->
+			   %% TODO: Link into supervisor
+			   Pid = spawn(?MODULE, consumer_init, [Urn, JID, Server, Priority]),
+			   mnesia:write(#rabbiter_consumer_process{queue = Urn, pid = Pid}),
+			   {new, Pid}
+		   end
+	   end) of
+	{atomic, {new, _Pid}} ->
+	    ok;
+	{atomic, {existing, Pid}} ->
+	    Pid ! {presence, JID, Priority},
+	    ok
+    end.
+ 
+stop_consumer(Urn, AllOrJID) ->
+    mnesia:transaction(
+      fun () ->
+	      case mnesia:read({rabbiter_consumer_process, Urn}) of
+		  [#rabbiter_consumer_process{pid = Pid}] ->
+		      Pid ! {unavailable, AllOrJID},
+		      ok;
+		  [] ->
+		      ok
+	      end
+      end),
+    ok.
+
+
+sub(To, From) ->
+	ok.
+
+unsub(To, From) ->
+	ok.
+
