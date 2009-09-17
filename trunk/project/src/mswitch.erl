@@ -265,7 +265,7 @@ dorpc(FromNode, RemoteNode, Message) ->
 	case rpc:call(RemoteNode, mswitch, call, [FromNode, Message], ?TIMEOUT) of
 		{badrpc, Reason} ->
 			io:format("~p: dorpc: badrpc: ~p~n", [?MODULE, Reason]),
-			{error, mswitch_node_down};
+			{error, {mswitch_node_down, FromNode, RemoteNode, Reason}};
 		
 		Other ->
 			Other
