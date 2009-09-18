@@ -2,22 +2,6 @@
 %% Created: 2009-09-17
 %% Description: MSWITCH bridge
 %%
-%% @doc
-%%
-%%  = Commands =
-%%  /                    Display list of commands
-%%  /sub                 Display current list subscriptions  
-%%  /sub X: b1 b2 ...    Subscribe to busses [b1, b2, ...] and save as list X
-%%  /del X               Unsubscribe & delete list X 
-%%	/sel                 Display current active list
-%%	/sel X               Select list X as current
-%%
-%%  = Data Model =
-%%
-%%	{userlists, User}       -> [Lists]
-%%	{userlist,  User, List}	-> [Busses]
-%%	{selection, User}       -> List
-%%
 -module(mod_mswitch).
 
 -behaviour(gen_server).
@@ -58,7 +42,6 @@ start_link(Host, Opts) ->
 	Ret=?TOOLS:create_tables(),
 	?LOG(create_tables, "Result: ~p", [Ret]),
 	
-	%?LOG(host, "Host: ~p", [Host]),
 	?LOG(start_link, "Host:~p  Options: ~p", [Host, Opts]),	
 	?INFO_MSG("mod_mswitch Host: ~p", [Host]),
     Proc = gen_mod:get_module_proc(Host, ?PROCNAME),
@@ -128,10 +111,12 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info({route, From, To, Packet}, State) ->
-	%route(From, To, Packet),
+	
 	%?LOG(route, "From: ~p To: ~p State: ~p", [From, To, State]),
 	%?LOG(route, "From: ~p To: ~p ", [From, To]),
-	?LOG(route, "in route",[]),
+	%?LOG(route, "in route",[]),
+	
+	route(From, To, Packet),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -182,11 +167,11 @@ route(From, To, Packet) ->
 safe_route(From, To, Packet) ->
     case catch do_route(From, To, Packet) of
 	{'EXIT', Reason} ->
-		?LOG(safe_route, "Routed FAILED Reason: ~p From:~p  To: ~p", [Reason, From, To]),
+		%?LOG(safe_route, "Routed FAILED Reason: ~p From:~p  To: ~p", [Reason, From, To]),
 	    ?ERROR_MSG("MOD_MSWITCH: ~p~nwhen processing: ~p",
 		       [Reason, {From, To, Packet}]);
 	_ ->
-		?LOG(safe_route, "Routed From:~p  To: ~p", [From, To]),
+		%?LOG(safe_route, "Routed From:~p  To: ~p", [From, To]),
 	    ok
     end.
  
