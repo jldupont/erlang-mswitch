@@ -50,6 +50,7 @@ dispatch_cmd(ThisBot, User, _) ->
 
 
 
+
 send_command_reply(From, To, {Status, Fmt, Args}) ->
     send_command_reply(From, To, {Status, io_lib:format(Fmt, Args)});
 send_command_reply(From, To, {ok, ResponseIoList}) ->

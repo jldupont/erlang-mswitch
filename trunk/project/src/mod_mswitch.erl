@@ -40,10 +40,11 @@
 -record(state, {host}).
 
 -define(PROCNAME,       ejabberd_mod_mswitch).
--define(LOG,            log).
+-define(LOG,            mswitch_mod_tools:log).
 -define(TOOLS,          mswitch_mod_tools).
 -define(CMDS,           mswitch_mod_cmds).
-
+-define(MSWITCH_TOOLS,  mswitch_tools).
+-define(MSWITCH,        mswitch).
 
 %%====================================================================
 %% API
@@ -53,7 +54,12 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link(Host, Opts) ->
+
+	Ret=?TOOLS:create_tables(),
+	?LOG(create_tables, "Result: ~p", [Ret]),
+	
 	%?LOG(host, "Host: ~p", [Host]),
+	?LOG(start_link, "Host:~p  Options: ~p", [Host, Opts]),	
 	?INFO_MSG("mod_mswitch Host: ~p", [Host]),
     Proc = gen_mod:get_module_proc(Host, ?PROCNAME),
     gen_server:start_link({local, Proc}, ?MODULE, [Host, Opts], []).
@@ -92,8 +98,6 @@ init([Host, Opts]) ->
     MyHost = gen_mod:get_opt_host(Host, Opts, "mswitch.@HOST@"),
     ejabberd_router:register_route(MyHost),
 	%?LOG(init, "MyHost: ~p", [MyHost]),
-	Ret=?TOOLS:create_tables(),
-	?TOOLS:log(create_tables, "Result: ~p", [Ret]),
     {ok, #state{host = MyHost}}.
 
 %%--------------------------------------------------------------------
@@ -124,7 +128,10 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info({route, From, To, Packet}, State) ->
-	route(From, To, Packet),
+	%route(From, To, Packet),
+	%?LOG(route, "From: ~p To: ~p State: ~p", [From, To, State]),
+	%?LOG(route, "From: ~p To: ~p ", [From, To]),
+	?LOG(route, "in route",[]),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -175,9 +182,11 @@ route(From, To, Packet) ->
 safe_route(From, To, Packet) ->
     case catch do_route(From, To, Packet) of
 	{'EXIT', Reason} ->
-	    ?ERROR_MSG("~p~nwhen processing: ~p",
+		?LOG(safe_route, "Routed FAILED Reason: ~p From:~p  To: ~p", [Reason, From, To]),
+	    ?ERROR_MSG("MOD_MSWITCH: ~p~nwhen processing: ~p",
 		       [Reason, {From, To, Packet}]);
 	_ ->
+		?LOG(safe_route, "Routed From:~p  To: ~p", [From, To]),
 	    ok
     end.
  
@@ -207,10 +216,11 @@ do_route(From, To, {xmlelement, "presence", _, _} = Packet) ->
 	    ?TOOLS:send_presence(To, From, "unsubscribed");
  
 	"" ->
-	    ?TOOLS:send_presence(To, From, ""),
-	    ?TOOLS:start_consumer(From, To#jid.lserver, ?TOOLS:extract_priority(Packet));
+	    ?TOOLS:send_presence(To, From, "");
+	    %?TOOLS:start_consumer(From, To#jid.lserver, ?TOOLS:extract_priority(Packet));
 	"unavailable" ->
-	    ?TOOLS:stop_consumer(From);
+		ok;
+	    %?TOOLS:stop_consumer(From);
  
 	"probe" ->
 	    ?TOOLS:send_presence(To, From, "");
@@ -245,4 +255,17 @@ strip_bom(C) -> C.
 
  
 
+
+%% ----------------------     ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% LOG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------     ------------------------------
+
+log(Context, Msg, Params) when is_atom(Context), is_list(Msg) ->
+	List=?MSWITCH_TOOLS:make_list(Params),
+	MessageFormat=erlang:atom_to_list(Context) ++ Msg,
+	Message=io_lib:format(MessageFormat, List),
+	%?INFO_MSG("mod_mswitch MESSAGE: ~p", [Message]),	
+	?MSWITCH:publish(debug, {Context, Message}).
+	%?INFO_MSG("from mswitch:publish: ~p", [Ret]).
+	%?INFO_MSG("mod_mswitch: node info: ~p", [node()]).
 
