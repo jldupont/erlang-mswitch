@@ -122,7 +122,7 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info({route, From, To, Packet}, State) ->
-	maybe_route(From, To, Packet),
+	route(From, To, Packet),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -178,7 +178,7 @@ log(Context, Msg, Params) when is_atom(Context), is_list(Msg) ->
 	
 %% @TODO filter/block
 %%
-maybe_route(From, To, Packet) ->
+route(From, To, Packet) ->
     safe_route(From, To, Packet).
 
 
