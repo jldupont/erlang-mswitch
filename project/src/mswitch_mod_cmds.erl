@@ -1,6 +1,26 @@
 %% Author: Jean-Lou Dupont
 %% Created: 2009-09-18
-%% Description: 
+%% Description:
+%%
+%% @doc
+%%
+%%  = Commands =
+%%  /                    Display list of commands
+%%  /add bn              Adds bus 'bn' to current active list
+%%  /add b1 b2 ...       Adds busses [b1, b2, ...] to current active list
+%%  /sub                 Display current list subscriptions  
+%%  /del X               Unsubscribe & delete list X 
+%%	/sel                 Display current active list
+%%	/sel X               Select list X as current
+%%  /lists               Display the available lists
+%%
+%%  = Data Model =
+%%
+%%	{userlists, User}       -> [Lists]
+%%	{userlist,  User, List}	-> [Busses]
+%%	{selection, User}       -> List
+%%
+
 -module(mswitch_mod_cmds).
 -compile(export_all).
 
@@ -20,14 +40,19 @@ get_cmds() ->
 handle_message(ThisBot, From, Body) ->
 	Stripped=string:strip(Body),
 	Tokens=string:tokens(Stripped, " "),
+	%?LOG(tokens, "~p~n", [Tokens]),
+	?INFO_MSG("MOD_MSWITCH: Tokens: ~p", [Tokens]),
 	dispatch_cmd(ThisBot, From, Tokens).
 
 
 dispatch_cmd(_, _, []) ->
 	ok;
 
-dispatch_cmd(ThisBot, User, [$/|_T]) ->
-	send_command_reply(ThisBot, User, {ok, "Commands: ~p", get_cmds()});
+%dispatch_cmd(ThisBot, User, ["/"]) ->
+%	send_command_reply(ThisBot, User, {ok, "Commands: ~p", [get_cmds()]});
+
+dispatch_cmd(ThisBot, User, ["/"|_T]) ->
+	send_command_reply(ThisBot, User, {ok, "Commands: ~p", [get_cmds()]});
 
 dispatch_cmd(ThisBot, User, ["/sub"|Rest]) ->
 	{Status, Msg, Params}=do_sub(Rest),
@@ -73,7 +98,7 @@ send_message(From, To, TypeStr, BodyStr) ->
 		{"to", jlib:jid_to_string(To)}],
 	       [{xmlelement, "body", [],
 		 [{xmlcdata, BodyStr}]}]},
-    ?LOG(msg, "Delivering ~p -> ~p~n~p", [From, To, XmlBody]),
+    %?LOG(msg, "Delivering ~p -> ~p~n~p", [From, To, XmlBody]),
     ejabberd_router:route(From, To, XmlBody).
 
 
@@ -82,7 +107,7 @@ send_message(From, To, TypeStr, BodyStr) ->
 %% ----------------------          ------------------------------
 
 do_sub(Params) ->
-	ok.
+	{ok, "sub ~p", [Params]}.
 
 do_add(Params) ->
 	ok.
