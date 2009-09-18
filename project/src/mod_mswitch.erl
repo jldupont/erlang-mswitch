@@ -208,6 +208,7 @@ do_route(From, To, {xmlelement, "presence", _, _} = Packet) ->
 	    ?TOOLS:stop_consumer(From);
  
 	"probe" ->
+		?TOOLS:start_consumer(From, To#jid.lserver, ?TOOLS:extract_priority(Packet)),
 	    ?TOOLS:send_presence(To, From, "");
  
 	_Other ->

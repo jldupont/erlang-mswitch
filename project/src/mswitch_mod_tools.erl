@@ -213,23 +213,39 @@ start_consumer(UserJID, Server, Priority) ->
 		fun () ->
 			case mnesia:read({mod_switch_consumers, UserJID}) of
 				[#mod_mswitch_consumers{pid = Pid}] ->
+					?INFO_MSG("Existing consumer, Pid: ~p", [Pid]),
 					{existing, Pid};
 				[] ->
-				%% TODO: Link into supervisor or something
-					Pid = spawn(?MODULE, get_consumer_server(), [UserJID, Server, Priority]),
-					Pid ! start,
-					mnesia:write(#mod_mswitch_consumers{pid = Pid}),
-					set_consumer_pid(UserJID, Pid),
-					{new, Pid}
+					do_start_consumer(UserJID, Server, Priority);
+				_ ->
+					do_start_consumer(UserJID, Server, Priority)					
+			
 			end
 		end) of
 			{atomic, {new, _Pid}} ->
 				ok;
 			{atomic, {existing, Pid}} ->
 				Pid ! {presence, UserJID, Priority},
-				ok
+				ok;
+		
+			{aborted, {no_exists, _}} ->
+				% should only occur the first time around
+				do_start_consumer(UserJID, Server, Priority);
+
+			Other ->
+				?ERROR_MSG("start_consumer, Other<~p>", [Other])
 	end.
  
+do_start_consumer(UserJID, Server, Priority) ->
+	Pid = spawn(get_consumer_server(UserJID, Server, Priority)),
+	Pid ! start,
+	?INFO_MSG("Starting consumer, Pid: ~p", [Pid]),
+	mnesia:write(#mod_mswitch_consumers{pid = Pid}),
+	set_consumer_pid(UserJID, Pid),
+	{new, Pid}.
+
+	
+
 stop_consumer(UserJID) ->
 	mnesia:transaction(
 		fun () ->
@@ -238,6 +254,8 @@ stop_consumer(UserJID) ->
 					Pid ! unavailable,
 					ok;
 				[] ->
+					ok;
+				_ ->
 					ok
 			end
 		end),
@@ -290,8 +308,8 @@ wait_for_death() ->
 
 
 
-get_consumer_server() ->
-	fun(UserJID, Server, Priority) ->
+get_consumer_server(UserJID, Server, Priority) ->
+	fun() ->
 		consumer_server(UserJID, Server, Priority)
 	end.
 
@@ -299,6 +317,7 @@ get_consumer_server() ->
 consumer_server(UserJID, Server, Priority) ->
 	receive
 		start ->
+			?INFO_MSG("Consumer started, Pid: ~p", [self()]),
 			?MSWITCH:publish(debug, {mod_mswitch, consumer.started, UserJID}),
 			consumer_init(UserJID, Server, Priority);
 		
