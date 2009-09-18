@@ -219,9 +219,9 @@ do_route(From, To, {xmlelement, "presence", _, _} = Packet) ->
  
 	"" ->
 	    ?TOOLS:send_presence(To, From, ""),
-	    start_consumer(From, To#jid.lserver, extract_priority(Packet));
+	    ?TOOLS:start_consumer(From, To#jid.lserver, ?TOOLS:extract_priority(Packet));
 	"unavailable" ->
-	    stop_consumer(From);
+	    ?TOOLS:stop_consumer(From);
  
 	"probe" ->
 	    ?TOOLS:send_presence(To, From, "");
@@ -285,38 +285,6 @@ send_message(From, To, TypeStr, BodyStr) ->
 
 
 
-start_consumer(Urn, JID, Server, Priority) ->
-    case mnesia:transaction(
-	   fun () ->
-		   case mnesia:read({rabbiter_consumer_process, Urn}) of
-		       [#rabbiter_consumer_process{pid = Pid}] ->
-			   {existing, Pid};
-		       [] ->
-			   %% TODO: Link into supervisor
-			   Pid = spawn(?MODULE, consumer_init, [Urn, JID, Server, Priority]),
-			   mnesia:write(#rabbiter_consumer_process{queue = Urn, pid = Pid}),
-			   {new, Pid}
-		   end
-	   end) of
-	{atomic, {new, _Pid}} ->
-	    ok;
-	{atomic, {existing, Pid}} ->
-	    Pid ! {presence, JID, Priority},
-	    ok
-    end.
- 
-stop_consumer(Urn, AllOrJID) ->
-    mnesia:transaction(
-      fun () ->
-	      case mnesia:read({rabbiter_consumer_process, Urn}) of
-		  [#rabbiter_consumer_process{pid = Pid}] ->
-		      Pid ! {unavailable, AllOrJID},
-		      ok;
-		  [] ->
-		      ok
-	      end
-      end),
-    ok.
 
 
 sub(To, From) ->
