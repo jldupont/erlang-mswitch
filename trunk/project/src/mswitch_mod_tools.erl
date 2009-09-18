@@ -216,7 +216,8 @@ start_consumer(UserJID, Server, Priority) ->
 					{existing, Pid};
 				[] ->
 				%% TODO: Link into supervisor or something
-					Pid = spawn(?MODULE, consumer_init, [UserJID, Server, Priority]),
+					Pid = spawn(?MODULE, get_consumer_server(), [UserJID, Server, Priority]),
+					Pid ! start,
 					mnesia:write(#mod_mswitch_consumers{pid = Pid}),
 					set_consumer_pid(UserJID, Pid),
 					{new, Pid}
@@ -245,25 +246,7 @@ stop_consumer(UserJID) ->
 
 
 
-%% @hidden
-consumer_init(UserJID, Server, Priority) ->
-	?INFO_MSG("**** starting consumer for jid: ~p", [UserJID]),
-    SelfPid = self(),
-    spawn_link(fun () ->
-				erlang:monitor(process, SelfPid),
-				wait_for_death()
-				end),
-    
-	consumer_server(UserJID, Server, Priority).
  
-
-wait_for_death() ->
-	receive
-		{'DOWN', _Ref, process, _Pid, _Reason} ->
-			done;
-		Other ->
-			exit({wait_for_death, unexpected, Other})
-	end.
 
 
 set_consumer_pid(UserJID, Pid) ->
@@ -283,19 +266,59 @@ get_consumer_pid(_UserJID, Pid) ->
 	Pid.
 
 
-	
+
+%% @hidden
+consumer_init(UserJID, Server, Priority) ->
+	?INFO_MSG("**** starting consumer for jid: ~p", [UserJID]),
+    SelfPid = self(),
+    spawn_link(fun () ->
+				erlang:monitor(process, SelfPid),
+				wait_for_death()
+				end),
+    
+	consumer_server(UserJID, Server, Priority).
+
+
+
+wait_for_death() ->
+	receive
+		{'DOWN', _Ref, process, _Pid, _Reason} ->
+			done;
+		Other ->
+			exit({wait_for_death, unexpected, Other})
+	end.
+
+
+
+get_consumer_server() ->
+	fun(UserJID, Server, Priority) ->
+		consumer_server(UserJID, Server, Priority)
+	end.
 
 
 consumer_server(UserJID, Server, Priority) ->
 	receive
+		start ->
+			consumer_init(UserJID, Server, Priority);
+		
+		{busses, Busses} ->
+			?MSWITCH:subscribe(Busses);
+		
+		{mswitch, Bus, Msg} ->
+			handle_mswitch(UserJID, Bus, Msg);
+		
 		unavailable ->
 			set_pid(UserJID, undefined),
 			exit(normal);
 	
-		ok -> ok
+			ok -> ok
 	end,
 	consumer_server(UserJID, Server, Priority).
 
+
+
+handle_mswitch(UserJID, Bus, Msg) ->
+	ok.
 
 
 
