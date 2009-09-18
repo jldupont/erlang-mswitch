@@ -31,6 +31,7 @@ send_presence(From, To, TypeStr) ->
 %%
 create_tables() ->
 	
+	try
 	Ret1=mnesia:create_table(mod_mswitch_userlists,
 			[{attributes, record_info(fields, mod_mswitch_userlists)},
 			{disc_copies, [node()]}]),
@@ -47,13 +48,19 @@ create_tables() ->
 			[{attributes, record_info(fields, mod_mswitch_consumers)}
 			]),
 	
-	process_results([Ret1, Ret2, Ret3, Ret4]).
+	process_results([Ret1, Ret2, Ret3, Ret4])
+	
+	catch X:Y -> 
+		{error, {X, Y}}
+	end.
+
 
 
 
 process_results([]) -> ok;
 process_results([{atomic, ok}|T]) -> process_results(T);
-process_results(_) -> error.
+process_results([{aborted, {already_exists,_}}|T]) -> process_results(T);
+process_results(Error) -> {error, Error}.
 
 
 %% ----------------------     ------------------------------
@@ -263,11 +270,11 @@ consumer_server(UserJID, Server, Priority) ->
 
 
 
-sub(_ThisBot, UserJID) ->
+sub(_ThisBot, _UserJID) ->
 	ok.
 
-unsub(_ThisBot, UserJID) ->
-	stop_consumer(UserJID),
+unsub(_ThisBot, _UserJID) ->
+	%stop_consumer(UserJID),
 	ok.
 
 
@@ -292,10 +299,16 @@ extract_priority(Packet) ->
 
 log(Context, Msg, Params) when is_atom(Context), is_list(Msg) ->
 	List=?MSWITCH_TOOLS:make_list(Params),
-	MessageFormat=erlang:atom_to_list(Context) ++ Msg,
-	Message=io_lib:format(MessageFormat, List),
+	MessageFormat=erlang:atom_to_list(Context) ++ ": "++Msg,
+	Message= try
+		lists:flatten( io_lib:format(MessageFormat, List) )
+	catch
+		_:_ ->
+		io_lib:format(MessageFormat, List)
+	end,
+	Stripped=string:strip(Message, both, $"),
 	%?INFO_MSG("mod_mswitch MESSAGE: ~p", [Message]),	
-	?MSWITCH:publish(debug, {Context, Message}).
+	?MSWITCH:publish(debug, {Context, Stripped}).
 	%?INFO_MSG("from mswitch:publish: ~p", [Ret]).
 	%?INFO_MSG("mod_mswitch: node info: ~p", [node()]).
 
