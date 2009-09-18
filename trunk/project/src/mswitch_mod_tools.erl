@@ -7,6 +7,10 @@
 -include("ejabberd.hrl").
 -include("jlib.hrl").
 
+-define(MSWITCH,        mswitch).
+-define(MSWITCH_TOOLS,  mswitch_tools).
+-define(LOG,            log).
+
 -record(mod_mswitch_userlists, {user, lists}).
 -record(mod_mswitch_userlist,  {user, list, busses}).
 -record(mod_mswitch_selection, {user, selection}).
@@ -15,10 +19,10 @@
 
 
 send_presence(From, To, "") ->
-    ?DEBUG("Sending sub reply of type ((available))~n~p -> ~p", [From, To]),
+    ?LOG(send_presence, "Sending sub reply of type ((available))~n~p -> ~p", [From, To]),
     ejabberd_router:route(From, To, {xmlelement, "presence", [], []});
 send_presence(From, To, TypeStr) ->
-    ?DEBUG("Sending sub reply of type ~p~n~p -> ~p", [TypeStr, From, To]),
+    ?LOG(send_presence, "Sending sub reply of type ~p~n~p -> ~p", [TypeStr, From, To]),
     ejabberd_router:route(From, To, {xmlelement, "presence", [{"type", TypeStr}], []}).
 
 
@@ -168,9 +172,10 @@ start_consumer(UserJID, Server, Priority) ->
 				[#mod_mswitch_consumers{pid = Pid}] ->
 					{existing, Pid};
 				[] ->
-				%% TODO: Link into supervisor
+				%% TODO: Link into supervisor or something
 					Pid = spawn(?MODULE, consumer_init, [UserJID, Server, Priority]),
 					mnesia:write(#mod_mswitch_consumers{pid = Pid}),
+					set_consumer_pid(UserJID, Pid),
 					{new, Pid}
 			end
 		end) of
@@ -181,12 +186,12 @@ start_consumer(UserJID, Server, Priority) ->
 				ok
 	end.
  
-stop_consumer(UserJID, AllOrJID) ->
+stop_consumer(UserJID) ->
 	mnesia:transaction(
 		fun () ->
 			case mnesia:read({mod_mswitch_consumers, UserJID}) of
 				[#mod_mswitch_consumers{pid = Pid}] ->
-					Pid ! {unavailable, AllOrJID},
+					Pid ! unavailable,
 					ok;
 				[] ->
 					ok
@@ -218,11 +223,52 @@ wait_for_death() ->
 	end.
 
 
+set_consumer_pid(UserJID, Pid) ->
+	put({consumer.pid, UserJID}, Pid).
+
+
+get_consumer_pid(UserJID) ->
+	Pid=get({consumer.pid, UserJID}),
+	get_consumer_pid(UserJID, Pid).
+
+get_consumer_pid(UserJID, undefined) ->
+	Pid=get_pid(UserJID),
+	put({consumer.pid}, Pid),
+	Pid;
+
+get_consumer_pid(_UserJID, Pid) ->
+	Pid.
+
+
+	
+
+
 consumer_server(UserJID, Server, Priority) ->
 	receive
+		unavailable ->
+			set_pid(UserJID, undefined),
+			exit(normal);
+	
 		ok -> ok
 	end,
 	consumer_server(UserJID, Server, Priority).
+
+
+
+
+
+%% ----------------------           ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% SUB/UNSUB %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------           ------------------------------
+
+
+
+sub(_ThisBot, UserJID) ->
+	ok.
+
+unsub(_ThisBot, UserJID) ->
+	stop_consumer(UserJID),
+	ok.
 
 
 
@@ -237,4 +283,19 @@ extract_priority(Packet) ->
 	S ->
 	    list_to_integer(S)
     end.
+
+
+
+%% ----------------------     ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% LOG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------     ------------------------------
+
+log(Context, Msg, Params) when is_atom(Context), is_list(Msg) ->
+	List=?MSWITCH_TOOLS:make_list(Params),
+	MessageFormat=erlang:atom_to_list(Context) ++ Msg,
+	Message=io_lib:format(MessageFormat, List),
+	%?INFO_MSG("mod_mswitch MESSAGE: ~p", [Message]),	
+	?MSWITCH:publish(debug, {Context, Message}).
+	%?INFO_MSG("from mswitch:publish: ~p", [Ret]).
+	%?INFO_MSG("mod_mswitch: node info: ~p", [node()]).
 

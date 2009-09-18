@@ -39,10 +39,9 @@
 -record(state, {host}).
 
 -define(PROCNAME,       ejabberd_mod_mswitch).
--define(MSWITCH,        mswitch).
--define(MSWITCH_TOOLS,  mswitch_tools).
 -define(LOG,            log).
 -define(TOOLS,          mswitch_mod_tools).
+-define(CMDS,           mswitch_mod_cmds).
 
 
 %%====================================================================
@@ -92,6 +91,8 @@ init([Host, Opts]) ->
     MyHost = gen_mod:get_opt_host(Host, Opts, "mswitch.@HOST@"),
     ejabberd_router:register_route(MyHost),
 	%?LOG(init, "MyHost: ~p", [MyHost]),
+	Ret=?TOOLS:create_tables(),
+	?TOOLS:log(create_tables, "Result: ~p", [Ret]),
     {ok, #state{host = MyHost}}.
 
 %%--------------------------------------------------------------------
@@ -161,19 +162,6 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 
-%% ----------------------     ------------------------------
-%%%%%%%%%%%%%%%%%%%%%%%%% LOG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ----------------------     ------------------------------
-
-log(Context, Msg, Params) when is_atom(Context), is_list(Msg) ->
-	List=?MSWITCH_TOOLS:make_list(Params),
-	MessageFormat=erlang:atom_to_list(Context) ++ Msg,
-	Message=io_lib:format(MessageFormat, List),
-	?INFO_MSG("mod_mswitch MESSAGE: ~p", [Message]),	
-	Ret=?MSWITCH:publish(debug, {Context, Message}),
-	?INFO_MSG("from mswitch:publish: ~p", [Ret]).
-	%?INFO_MSG("mod_mswitch: node info: ~p", [node()]).
-
 
 	
 %% @TODO filter/block
@@ -206,15 +194,15 @@ do_route(From, To, {xmlelement, "presence", _, _} = Packet) ->
 	"subscribe" ->
 	    ?TOOLS:send_presence(To, From, "subscribe");
 	"subscribed" ->
-	    sub(To, From),
+	    ?TOOLS:sub(To, From),
 	    ?TOOLS:send_presence(To, From, "subscribed"),
 	    ?TOOLS:send_presence(To, From, "");
 	"unsubscribe" ->
-	    unsub(To, From),
+	    ?TOOLS:unsub(To, From),
 	    ?TOOLS:send_presence(To, From, "unsubscribed"),
 	    ?TOOLS:send_presence(To, From, "unsubscribe");
 	"unsubscribed" ->
-	    unsub(To, From),
+	    ?TOOLS:unsub(To, From),
 	    ?TOOLS:send_presence(To, From, "unsubscribed");
  
 	"" ->
@@ -242,7 +230,7 @@ do_route(From, To, {xmlelement, "message", _, _} = Packet) ->
 		    ?ERROR_MSG("Received error message~n~p -> ~p~n~p", [From, To, Packet]),
 			error;
 		_ ->
-		    send_command_reply(To, From, do_command(To, From, Body, parse_command(Body)))
+		    ?CMDS:handle_message(To, From, Body)
 	    end
     end,
     ok;
@@ -251,45 +239,9 @@ do_route(_From, _To, _Packet) ->
     ok.
 
  
-
 strip_bom([239,187,191|C]) -> C;
 strip_bom(C) -> C.
 
-
-send_command_reply(From, To, {Status, Fmt, Args}) ->
-    send_command_reply(From, To, {Status, io_lib:format(Fmt, Args)});
-send_command_reply(From, To, {ok, ResponseIoList}) ->
-    send_chat(From, To, ResponseIoList);
-send_command_reply(From, To, {error, ResponseIoList}) ->
-    send_chat(From, To, ResponseIoList);
-send_command_reply(_From, _To, noreply) ->
-    ok.
-
-
-send_chat(From, To, {Fmt, Args}) ->
-    send_chat(From, To, io_lib:format(Fmt, Args));
-send_chat(From, To, IoList) ->
-    send_message(From, To, "chat", lists:flatten(IoList)).
-
-send_message(From, To, TypeStr, BodyStr) ->
-    XmlBody = {xmlelement, "message",
-	       [{"type", TypeStr},
-		{"from", jlib:jid_to_string(From)},
-		{"to", jlib:jid_to_string(To)}],
-	       [{xmlelement, "body", [],
-		 [{xmlcdata, BodyStr}]}]},
-    ?DEBUG("Delivering ~p -> ~p~n~p", [From, To, XmlBody]),
-    ejabberd_router:route(From, To, XmlBody).
  
 
-
-
-
-
-
-sub(To, From) ->
-	ok.
-
-unsub(To, From) ->
-	ok.
 
