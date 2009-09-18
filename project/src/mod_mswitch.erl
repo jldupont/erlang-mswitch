@@ -2,6 +2,21 @@
 %% Created: 2009-09-17
 %% Description: MSWITCH bridge
 %%
+%% @doc
+%%
+%%  = Commands =
+%%  /sub                 Display current list subscriptions  
+%%  /sub X: b1 b2 ...    Subscribe to busses [b1, b2, ...] and save as list X
+%%  /del X               Unsubscribe & delete list X 
+%%	/sel                 Display current active list
+%%	/sel X               Select list X as current
+%%
+%%  = Data Model =
+%%
+%%	{userlists, User}       -> [Lists]
+%%	{userlist,  User, List}	-> [Busses]
+%%	{selection, User}       -> List
+%%
 -module(mod_mswitch).
 
 -behaviour(gen_server).
