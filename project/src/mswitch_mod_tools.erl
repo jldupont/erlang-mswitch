@@ -79,12 +79,12 @@ get_selection(UserJid) ->
       fun () ->
 	      case mnesia:read({mod_mswitch_selection, UserJid}) of
 			     [Selection] -> Selection;
-			     [] -> undefined
+			     [] -> default
 			 end
       end),
 	case Ret of
-		{atomic, Result} -> Result;
-		_ -> undefined
+		{atomic, {mod_mswitch_selection, _,Result}} -> Result;
+		_ -> default
 	end.
 
 %% @doc Retrieve the lists associated with User
@@ -100,7 +100,7 @@ get_lists(UserJid) ->
 			 end
       end),
 	case Ret of
-		{atomic, Result} -> Result;
+		{atomic, {mod_mswitch_userlists, _, Result}} -> Result;
 		_ -> undefined
 	end.
 	
@@ -114,7 +114,7 @@ get_busses(UserJid, List) ->
 			 end
       end),
 	case Ret of
-		{atomic, Result} -> Result;
+		{atomic, {mod_mswitch_userlist, _, _, Result}} -> Result;
 		_ -> undefined
 	end.
 
@@ -128,9 +128,41 @@ get_pid(UserJid) ->
 			 end
       end),
 	case Ret of
-		{atomic, Result} -> Result;
+		{atomic, {mod_mswitch_consumers, _, Result}} -> Result;
 		_ -> undefined
 	end.
+
+
+%% ----------------------        ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% CACHED %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%% GET    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------        ------------------------------
+
+cget(selection, UserJID) ->
+	do_cget({selection, UserJID}, get_selection, [UserJID]);
+
+cget(lists,  UserJID) ->
+	do_cget({lists, UserJID}, get_lists, [UserJID]);	
+
+cget(busses, {UserJID, List}) ->
+	do_cget({busses, UserJID, List}, get_busses, [UserJID, List]);
+
+cget(U, _) ->
+	?CRITICAL_MSG("MOD_MSWITCH: cget: unknown ~p", [U]).
+
+do_cget(Var, Func, Params) ->
+	Value=get(Var),
+	case Value of 
+		undefined ->
+			Ret=apply(?MODULE, Func, Params),
+			put(Var, Ret),
+			Ret;
+		Value ->
+			Value
+	end.
+
+
+
 
 
 %% ----------------------     ------------------------------
@@ -143,7 +175,8 @@ set_selection(UserJid, Selection) ->
 		fun() ->
 		  	mnesia:write(#mod_mswitch_selection{user= UserJid, selection= Selection})
 		end
-	).
+	),
+	put({selection, UserJid}, Selection).
 
 
 set_lists(UserJid, Lists) ->
@@ -151,21 +184,24 @@ set_lists(UserJid, Lists) ->
 		fun() ->
 		  	mnesia:write(#mod_mswitch_userlists{user= UserJid, lists= Lists})
 		end
-	).
+	),
+	put({lists, UserJid}, Lists).
 
 set_list(UserJid, List, Busses) ->
 	mnesia:transaction(
 		fun() ->
 		  	mnesia:write(#mod_mswitch_userlist{user= UserJid, list= List, busses=Busses})
 		end
-	).
+	),
+	put({busses, UserJid, List}, Busses).
 
 set_pid(UserJid, Pid) ->
 	mnesia:transaction(
 		fun() ->
 		  	mnesia:write(#mod_mswitch_consumers{user= UserJid, pid=Pid})
 		end
-	).
+	),
+	put({consumer.pid, UserJid}, Pid).
 
 %% ----------------------          ------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%% CONSUMER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

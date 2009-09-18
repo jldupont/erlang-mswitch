@@ -80,7 +80,6 @@ stop(Host) ->
 init([Host, Opts]) ->
     MyHost = gen_mod:get_opt_host(Host, Opts, "mswitch.@HOST@"),
     ejabberd_router:register_route(MyHost),
-	%?LOG(init, "MyHost: ~p", [MyHost]),
     {ok, #state{host = MyHost}}.
 
 %%--------------------------------------------------------------------
@@ -168,8 +167,7 @@ safe_route(From, To, Packet) ->
     case catch do_route(From, To, Packet) of
 	{'EXIT', Reason} ->
 		%?LOG(safe_route, "Routed FAILED Reason: ~p From:~p  To: ~p", [Reason, From, To]),
-	    ?ERROR_MSG("MOD_MSWITCH: ~p~nwhen processing: ~p",
-		       [Reason, {From, To, Packet}]);
+	    ?ERROR_MSG("MOD_MSWITCH: ~p~nwhen processing: ~p", [Reason, {From, To, Packet}]);
 	_ ->
 		%?LOG(safe_route, "Routed From:~p  To: ~p", [From, To]),
 	    ok
@@ -228,8 +226,8 @@ do_route(From, To, {xmlelement, "message", _, _} = Packet) ->
 		_ ->
 		    ?CMDS:handle_message(To, From, Body)
 	    end
-    end,
-    ok;
+    end;
+
 do_route(_From, _To, _Packet) ->
     ?INFO_MSG("**** DROPPED~n~p~n~p~n~p", [_From, _To, _Packet]),
     ok.
@@ -239,18 +237,3 @@ strip_bom([239,187,191|C]) -> C;
 strip_bom(C) -> C.
 
  
-
-
-%% ----------------------     ------------------------------
-%%%%%%%%%%%%%%%%%%%%%%%%% LOG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ----------------------     ------------------------------
-
-log(Context, Msg, Params) when is_atom(Context), is_list(Msg) ->
-	List=?MSWITCH_TOOLS:make_list(Params),
-	MessageFormat=erlang:atom_to_list(Context) ++ Msg,
-	Message=io_lib:format(MessageFormat, List),
-	%?INFO_MSG("mod_mswitch MESSAGE: ~p", [Message]),	
-	?MSWITCH:publish(debug, {Context, Message}).
-	%?INFO_MSG("from mswitch:publish: ~p", [Ret]).
-	%?INFO_MSG("mod_mswitch: node info: ~p", [node()]).
-
