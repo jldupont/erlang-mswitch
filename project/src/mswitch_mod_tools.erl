@@ -299,6 +299,7 @@ get_consumer_server() ->
 consumer_server(UserJID, Server, Priority) ->
 	receive
 		start ->
+			?MSWITCH:publish(debug, {mod_mswitch, consumer.started, UserJID}),
 			consumer_init(UserJID, Server, Priority);
 		
 		{busses, Busses} ->
@@ -332,9 +333,8 @@ handle_mswitch(UserJID, Bus, Msg) ->
 sub(_ThisBot, _UserJID) ->
 	ok.
 
-unsub(_ThisBot, _UserJID) ->
-	%stop_consumer(UserJID),
-	ok.
+unsub(_ThisBot, UserJID) ->
+	stop_consumer(UserJID).
 
 
 

@@ -183,7 +183,9 @@ do_route(#jid{lserver = FromServer} = From,
 
 do_route(From, To, {xmlelement, "presence", _, _} = Packet) ->
 
-    case xml:get_tag_attr_s("type", Packet) of
+	Type=xml:get_tag_attr_s("type", Packet),
+	?INFO_MSG("PRESENCE, Type: ~p", [Type]),
+    case  Type of
 	"subscribe" ->
 	    ?TOOLS:send_presence(To, From, "subscribe");
 	"subscribed" ->
@@ -199,11 +201,11 @@ do_route(From, To, {xmlelement, "presence", _, _} = Packet) ->
 	    ?TOOLS:send_presence(To, From, "unsubscribed");
  
 	"" ->
-	    ?TOOLS:send_presence(To, From, "");
-	    %?TOOLS:start_consumer(From, To#jid.lserver, ?TOOLS:extract_priority(Packet));
+	    ?TOOLS:send_presence(To, From, ""),
+	    ?TOOLS:start_consumer(From, To#jid.lserver, ?TOOLS:extract_priority(Packet));
 	"unavailable" ->
-		ok;
-	    %?TOOLS:stop_consumer(From);
+		%ok;
+	    ?TOOLS:stop_consumer(From);
  
 	"probe" ->
 	    ?TOOLS:send_presence(To, From, "");
