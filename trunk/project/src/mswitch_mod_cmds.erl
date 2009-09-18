@@ -7,9 +7,46 @@
 -include("ejabberd.hrl").
 -include("jlib.hrl").
 
+-define(TOOLS, mswitch_mod_tools).
+-define(LOG,   ?TOOLS:log).
 
-handle_message(To, From, Body) ->
-	ok.
+-define(CMDS, ["/", "/sub", "/add", "/del", "/sel" ]).
+
+
+get_cmds() ->
+	?CMDS.
+
+
+handle_message(ThisBot, From, Body) ->
+	Stripped=string:strip(Body),
+	Tokens=string:tokens(Stripped, " "),
+	dispatch_cmd(ThisBot, From, Tokens).
+
+
+dispatch_cmd(_, _, []) ->
+	ok;
+
+dispatch_cmd(ThisBot, User, [$/|_T]) ->
+	send_command_reply(ThisBot, User, {ok, "Commands: ~p", get_cmds()});
+
+dispatch_cmd(ThisBot, User, ["/sub"|Rest]) ->
+	{Status, Msg, Params}=do_sub(Rest),
+	send_command_reply(ThisBot, User, {Status, Msg, Params});
+
+dispatch_cmd(ThisBot, User, ["/add"|Rest]) ->
+	{Status, Msg, Params}=do_add(Rest),
+	send_command_reply(ThisBot, User, {Status, Msg, Params});
+
+dispatch_cmd(ThisBot, User, ["/del"|Rest]) ->
+	{Status, Msg, Params}=do_del(Rest),
+	send_command_reply(ThisBot, User, {Status, Msg, Params});
+
+dispatch_cmd(ThisBot, User, ["/sel"|Rest]) ->
+	{Status, Msg, Params}=do_sel(Rest),
+	send_command_reply(ThisBot, User, {Status, Msg, Params});
+
+dispatch_cmd(ThisBot, User, _) ->
+	send_command_reply(ThisBot, User, {error, "Eh?"}).
 
 
 
@@ -35,6 +72,22 @@ send_message(From, To, TypeStr, BodyStr) ->
 		{"to", jlib:jid_to_string(To)}],
 	       [{xmlelement, "body", [],
 		 [{xmlcdata, BodyStr}]}]},
-    ?DEBUG("Delivering ~p -> ~p~n~p", [From, To, XmlBody]),
+    ?LOG(msg, "Delivering ~p -> ~p~n~p", [From, To, XmlBody]),
     ejabberd_router:route(From, To, XmlBody).
 
+
+%% ----------------------          ------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%% HANDLERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ----------------------          ------------------------------
+
+do_sub(Params) ->
+	ok.
+
+do_add(Params) ->
+	ok.
+
+do_del(Params) ->
+	ok.
+
+do_sel(Params) ->
+	ok.

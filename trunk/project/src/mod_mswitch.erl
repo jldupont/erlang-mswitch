@@ -5,6 +5,7 @@
 %% @doc
 %%
 %%  = Commands =
+%%  /                    Display list of commands
 %%  /sub                 Display current list subscriptions  
 %%  /sub X: b1 b2 ...    Subscribe to busses [b1, b2, ...] and save as list X
 %%  /del X               Unsubscribe & delete list X 
