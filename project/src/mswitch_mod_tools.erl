@@ -241,7 +241,7 @@ do_start_consumer(UserJID, Server, Priority) ->
 	Pid = spawn(get_consumer_server(UserJID, Server, Priority)),
 	Pid ! start,
 	?INFO_MSG("Starting consumer, Pid: ~p", [Pid]),
-	mnesia:write(#mod_mswitch_consumers{pid = Pid}),
+	set_pid(UserJID, Pid),
 	set_consumer_pid(UserJID, Pid),
 	{new, Pid}.
 
@@ -322,6 +322,13 @@ consumer_server(UserJID, Server, Priority) ->
 			?MSWITCH:publish(debug, {mod_mswitch, consumer.started, UserJID}),
 			consumer_init(UserJID, Server, Priority);
 		
+		reload ->
+			do_reload(self(), UserJID),
+			?INFO_MSG("got reload!", []);
+		
+		{presence, UserJID, Priority} ->
+			noop;
+		
 		{busses, Busses} ->
 			?MSWITCH:subscribe(Busses);
 		
@@ -332,13 +339,32 @@ consumer_server(UserJID, Server, Priority) ->
 			set_pid(UserJID, undefined),
 			exit(normal);
 	
-			ok -> ok
+		Other ->
+			?INFO_MSG("Unsupported message: ~p", [Other])
+			
 	end,
 	consumer_server(UserJID, Server, Priority).
 
 
+do_reload(ServerPid, User) ->
+	ListSel=get_selection(User),
+	Busses=get_busses(User, ListSel),
+	maybe_subscribe(User, ServerPid, ListSel, Busses).
+	
+
+maybe_subscribe(User, _ServerPid, List, undefined) ->
+	?INFO_MSG("No busses for user: ~p selection: ~p", [User, List]);
+	
+maybe_subscribe(User, ServerPid, _List, Busses) when is_list(Busses) ->
+	?INFO_MSG("Subscribing user: ~p to busses: ~p", [User, Busses]),
+	?MSWITCH:subscribe(ServerPid, Busses);
+
+maybe_subscribe(User, _ServerPid, List, Busses) ->
+	?ERROR_MSG("maybe_subscribe: exception: User: ~p  List: ~p  Busses: ~p", [User, List, Busses]).
+
 
 handle_mswitch(UserJID, Bus, Msg) ->
+	?INFO_MSG("mswitch rx: Bus: ~p  Msg: ~p", [Bus, Msg]),
 	ok.
 
 
