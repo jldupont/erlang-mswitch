@@ -33,7 +33,7 @@
 -define(TOOLS, mswitch_mod_tools).
 -define(LOG,   ?TOOLS:log).
 
--define(CMDS, ["/", "/add", "/sub", "/create", "/del", "/sel", "/lists" ]).
+-define(CMDS, ["-", "-add", "-sub", "-create", "-del", "-sel", "-lists" ]).
 
 
 get_cmds() ->
@@ -51,30 +51,30 @@ handle_message(ThisBot, From, Body) ->
 dispatch_cmd(_, _, []) ->
 	ok;
 
-dispatch_cmd(ThisBot, User, ["/"|_T]) ->
+dispatch_cmd(ThisBot, User, ["-"|_T]) ->
 	send_command_reply(ThisBot, User, {ok, "Commands: ~p", [get_cmds()]});
 
-dispatch_cmd(ThisBot, User, ["/sub"|Rest]) ->
+dispatch_cmd(ThisBot, User, ["-sub"|Rest]) ->
 	{Status, Msg, Params}=do_sub(ThisBot, User, Rest),
 	send_command_reply(ThisBot, User, {Status, Msg, Params});
 
-dispatch_cmd(ThisBot, User, ["/add"|Rest]) ->
+dispatch_cmd(ThisBot, User, ["-add"|Rest]) ->
 	{Status, Msg, Params}=do_add(ThisBot, User, Rest),
 	send_command_reply(ThisBot, User, {Status, Msg, Params});
 
-dispatch_cmd(ThisBot, User, ["/create"|Rest]) ->
+dispatch_cmd(ThisBot, User, ["-create"|Rest]) ->
 	{Status, Msg, Params}=do_create(ThisBot, User, Rest),
 	send_command_reply(ThisBot, User, {Status, Msg, Params});
 
-dispatch_cmd(ThisBot, User, ["/del"|Rest]) ->
+dispatch_cmd(ThisBot, User, ["-del"|Rest]) ->
 	{Status, Msg, Params}=do_del(ThisBot, User, Rest),
 	send_command_reply(ThisBot, User, {Status, Msg, Params});
 
-dispatch_cmd(ThisBot, User, ["/sel"|Rest]) ->
+dispatch_cmd(ThisBot, User, ["-sel"|Rest]) ->
 	{Status, Msg, Params}=do_sel(ThisBot, User, Rest),
 	send_command_reply(ThisBot, User, {Status, Msg, Params});
 
-dispatch_cmd(ThisBot, User, ["/lists"|_Rest]) ->
+dispatch_cmd(ThisBot, User, ["-lists"|_Rest]) ->
 	{Status, Msg, Params}=do_lists(ThisBot, User),
 	send_command_reply(ThisBot, User, {Status, Msg, Params});
 
@@ -236,3 +236,4 @@ add_unique(List, Elements) when is_list(Elements) ->
 add_unique(List, Element) ->
 	Filtered=List--[Element],
 	Filtered++[Element].
+
