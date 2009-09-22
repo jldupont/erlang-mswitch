@@ -133,6 +133,7 @@ do_add(_ThisBot, User, Params) ->
 	Busses=?TOOLS:cget(busses, {User, Sel}),
 	NewBusses=add_unique(Busses, Params),
 	?TOOLS:set_list(User, Sel, NewBusses),
+	do_sync(User),
 	{ok, "Selection<~p> Busses<~p>", [Sel, NewBusses]}.
 
 
@@ -168,12 +169,28 @@ do_lists(_ThisBot, User) ->
 
 
 
+do_sync(UserJID) ->
+	Pid = ?TOOLS:get_consumer_pid(UserJID),
+	safe_msg(UserJID, Pid, reload).
+
+
+safe_msg(UserJID, Pid, Msg) ->
+	try
+		Pid ! Msg,
+		ok
+	catch
+		X:Y ->
+			?INFO_MSG("safe_msg: exception whilst sending to UserJID: ~p  PID: ~p", [UserJID, Pid])
+	end.
+	
+
 %% No lists exist... but the DEFAULT one is implicit...
 %% Lets create it!
 %%
 maybe_do_sel(User, _Sel, undefined) ->
 	?TOOLS:set_lists(User, ["default"]),
 	?TOOLS:set_selection(User, "default"),
+	do_sync(User),
 	{ok, "Changed to Selection<~p>", ["default"]};
 	
 maybe_do_sel(User, Sel, Lists) ->
@@ -181,6 +198,7 @@ maybe_do_sel(User, Sel, Lists) ->
 	case lists:member(Sel, Lists) of
 		true ->
 			?TOOLS:set_selection(User, Sel),
+			do_sync(User),
 			{ok, "Changed to Selection<~p>", [Sel]};
 		_ ->
 			{error, "List does not exist", []}
