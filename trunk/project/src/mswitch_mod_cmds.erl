@@ -119,8 +119,9 @@ send_message(From, To, TypeStr, BodyStr) ->
 
 
 do_sub(_ThisBot, User, _) ->
-	Lists=?TOOLS:cget(lists, User),
-	{ok, "Lists defined <~p>", [Lists]}.
+	SelList=?TOOLS:cget(selection, User),
+	Busses=?TOOLS:cget(busses, {User, SelList}),
+	{ok, "Busses defined <~p>", [Busses]}.
 
 
 do_add(_ThisBot, _User, []) ->
