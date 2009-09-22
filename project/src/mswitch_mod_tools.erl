@@ -127,11 +127,9 @@ get_busses(UserJid, List) ->
 
 
 get_pid(UserJid) ->
-	SJID=short_jid(UserJid),
-	
 	Ret=mnesia:transaction(
       fun () ->
-	      case mnesia:read({mod_mswitch_consumers, SJID}) of
+	      case mnesia:read({mod_mswitch_consumers, UserJid}) of
 			     [Pid] -> Pid;
 			     [] -> undefined
 			 end
@@ -183,11 +181,12 @@ set_selection(UserJid, Selection) ->
 	SJID=short_jid(UserJid),
 	
 	?INFO_MSG("set_selection: user: ~p  selection: ~p", [SJID, Selection]),
-	mnesia:transaction(
+	Ret=mnesia:transaction(
 		fun() ->
 		  	mnesia:write(#mod_mswitch_selection{user= SJID, selection= Selection})
 		end
 	),
+	?INFO_MSG("set_selection: Ret: ~p", [Ret]),
 	put({selection, SJID}, Selection).
 
 
@@ -195,31 +194,34 @@ set_lists(UserJid, Lists) ->
 	SJID=short_jid(UserJid),
 	
 	?INFO_MSG("set_lists: user: ~p  lists: ~p", [SJID, Lists]),
-	mnesia:transaction(
+	Ret=mnesia:transaction(
 		fun() ->
 		  	mnesia:write(#mod_mswitch_userlists{user= SJID, lists= Lists})
 		end
 	),
+	?INFO_MSG("set_lists: Ret: ~p", [Ret]),
 	put({lists, SJID}, Lists).
 
 set_list(UserJid, List, Busses) ->
 	SJID=short_jid(UserJid),
 	?INFO_MSG("set_list: user: ~p  list: ~p  busses: ~p", [SJID, List, Busses]),
-	mnesia:transaction(
+	Ret=mnesia:transaction(
 		fun() ->
 		  	mnesia:write(#mod_mswitch_userlist{user= SJID, list= List, busses=Busses})
 		end
 	),
+	?INFO_MSG("set_list: Ret: ~p", [Ret]),
 	put({busses, SJID, List}, Busses).
 
 set_pid(UserJid, Pid) ->
 	%SJID=short_jid(UserJid),
 	?INFO_MSG("set_pid: user: ~p  pid: ~p", [UserJid, Pid]),
-	mnesia:transaction(
+	Ret=mnesia:transaction(
 		fun() ->
 		  	mnesia:write(#mod_mswitch_consumers{user= UserJid, pid=Pid})
 		end
 	),
+	?INFO_MSG("set_pid: Ret: ~p", [Ret]),
 	put({consumer.pid, UserJid}, Pid).
 
 %% ----------------------          ------------------------------
@@ -231,7 +233,7 @@ start_consumer(UserJid, Server, Priority) ->
 		
 	case mnesia:transaction(
 		fun () ->
-			case mnesia:read({mod_switch_consumers, user=UserJid}) of
+			case mnesia:read({mod_switch_consumers, UserJid}) of
 				[#mod_mswitch_consumers{user=UserJid, pid = Pid}] ->
 					?INFO_MSG("Existing consumer, Pid: ~p", [Pid]),
 					{existing, Pid};
@@ -253,7 +255,8 @@ start_consumer(UserJid, Server, Priority) ->
 				do_start_consumer(UserJid, Server, Priority);
 
 			Other ->
-				?ERROR_MSG("start_consumer, Other<~p>", [Other])
+				?ERROR_MSG("start_consumer, Other<~p>", [Other]),
+				do_start_consumer(UserJid, Server, Priority)
 	end.
  
 do_start_consumer(UserJid, Server, Priority) ->
