@@ -133,7 +133,7 @@ do_add(_ThisBot, User, Params) ->
 	Sel=?TOOLS:cget(selection, User),
 	Busses=?TOOLS:cget(busses, {User, Sel}),
 	NewBusses=add_unique(Busses, Params),
-	?TOOLS:set_list(User, Sel, NewBusses),
+	?TOOLS:set_busses(User, Sel, NewBusses),
 	do_sync(User),
 	{ok, "Selection<~p> Busses<~p>", [Sel, NewBusses]}.
 
@@ -239,7 +239,7 @@ maybe_create(User, List, Lists) ->
 iter_do_del(_User, [], Acc) -> Acc;
 
 iter_do_del(User, [El|Rest], Acc) ->
-	?TOOLS:set_list(User, El, []),
+	?TOOLS:set_busses(User, El, []),
 	iter_do_del(User, Rest, Acc++[El]).
 
 	
