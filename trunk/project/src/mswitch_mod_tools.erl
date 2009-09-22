@@ -77,7 +77,7 @@ process_results(Error) -> {error, Error}.
 %%	List=atom()
 get_selection(UserJid) ->
 	SJID=short_jid(UserJid),
-	
+	?INFO_MSG("get_selection: User: ~p", [SJID]),
 	Ret=mnesia:transaction(
       fun () ->
 	      case mnesia:read({mod_mswitch_selection, SJID}) of
@@ -86,7 +86,9 @@ get_selection(UserJid) ->
 			 end
       end),
 	case Ret of
-		{atomic, {mod_mswitch_selection, _,Result}} -> Result;
+		{atomic, {mod_mswitch_selection, _,Result}} -> 
+			?INFO_MSG("get_selection: User: ~p  Result: ~p", [SJID, Result]),
+			Result;
 		_ -> default
 	end.
 
@@ -96,7 +98,7 @@ get_selection(UserJid) ->
 %%
 get_lists(UserJid) ->
 	SJID=short_jid(UserJid),
-	
+	?INFO_MSG("get_lists: User: ~p", [SJID]),
 	Ret=mnesia:transaction(
       fun () ->
 	      case mnesia:read({mod_mswitch_userlists, SJID}) of
@@ -105,24 +107,32 @@ get_lists(UserJid) ->
 			 end
       end),
 	case Ret of
-		{atomic, {mod_mswitch_userlists, _, Result}} -> Result;
+		{atomic, {mod_mswitch_userlists, _, Result}} ->
+			?INFO_MSG("get_lists: User: ~p  Result: ~p", [SJID, Result]),
+			Result;
 		_ -> undefined
 	end.
 	
 
 get_busses(UserJid, List) ->
 	SJID=short_jid(UserJid),
-	
+	?INFO_MSG("get_busses: User: ~p", [SJID]),
 	Ret=mnesia:transaction(
       fun () ->
-	      case mnesia:read({mod_mswitch_userlist, SJID, List}) of
-			     [List] -> List;
+	      case mnesia:read({mod_mswitch_userlist, SJID}) of
+			     [Result] ->
+					 ?INFO_MSG("get_busses: list: ~p", [Result]),
+					 Result;
 			     [] -> undefined
 			 end
       end),
 	case Ret of
-		{atomic, {mod_mswitch_userlist, _, _, Result}} -> Result;
-		_ -> undefined
+		{atomic, {mod_mswitch_userlist, _, _, Result}} -> 
+			?INFO_MSG("get_busses: User: ~p  Result: ~p", [SJID, Result]),
+			Result;
+		Other -> 
+			?INFO_MSG("get_busses: User: ~p  OTHER: ~p", [SJID, Other]),
+			undefined
 	end.
 
 
@@ -145,14 +155,17 @@ get_pid(UserJid) ->
 %%%%%%%%%%%%%%%%%%%%%%%%% GET    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ----------------------        ------------------------------
 
-cget(selection, UserJID) ->
-	do_cget({selection, UserJID}, get_selection, [UserJID]);
+cget(selection, UserJid) ->
+	SJID=short_jid(UserJid),
+	do_cget({selection, SJID}, get_selection, [UserJid]);
 
-cget(lists,  UserJID) ->
-	do_cget({lists, UserJID}, get_lists, [UserJID]);	
+cget(lists,  UserJid) ->
+	SJID=short_jid(UserJid),
+	do_cget({lists, SJID}, get_lists, [UserJid]);	
 
-cget(busses, {UserJID, List}) ->
-	do_cget({busses, UserJID, List}, get_busses, [UserJID, List]);
+cget(busses, {UserJid, List}) ->
+	SJID=short_jid(UserJid),
+	do_cget({busses, SJID, List}, get_busses, [UserJid, List]);
 
 cget(U, _) ->
 	?CRITICAL_MSG("MOD_MSWITCH: cget: unknown ~p", [U]).
@@ -162,9 +175,11 @@ do_cget(Var, Func, Params) ->
 	case Value of 
 		undefined ->
 			Ret=apply(?MODULE, Func, Params),
+			?INFO_MSG("do_cget: putting: Var: ~p  Value: ~p", [Var, Ret]),
 			put(Var, Ret),
 			Ret;
 		Value ->
+			?INFO_MSG("do_cget: got from cache: Var: ~p  Value: ~p", [Var, Value]),
 			Value
 	end.
 
