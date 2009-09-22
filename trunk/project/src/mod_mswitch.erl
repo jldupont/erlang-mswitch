@@ -239,4 +239,3 @@ do_route(_From, _To, _Packet) ->
 strip_bom([239,187,191|C]) -> C;
 strip_bom(C) -> C.
 
- 

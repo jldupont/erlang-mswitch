@@ -1,6 +1,7 @@
 %% Author: Jean-Lou Dupont
 %% Created: 2009-09-17
-%% Description: 
+%% Description:
+%%
 -module(mswitch_mod_tools).
 -compile(export_all).
 
