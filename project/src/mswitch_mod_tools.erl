@@ -76,9 +76,11 @@ process_results(Error) -> {error, Error}.
 %%	UserJid=JID()
 %%	List=atom()
 get_selection(UserJid) ->
+	SJID=short_jid(UserJid),
+	
 	Ret=mnesia:transaction(
       fun () ->
-	      case mnesia:read({mod_mswitch_selection, UserJid}) of
+	      case mnesia:read({mod_mswitch_selection, SJID}) of
 			     [Selection] -> Selection;
 			     [] -> default
 			 end
@@ -93,9 +95,11 @@ get_selection(UserJid) ->
 %% @spec get_lists(UserJid) -> Lists | undefined
 %%
 get_lists(UserJid) ->
+	SJID=short_jid(UserJid),
+	
 	Ret=mnesia:transaction(
       fun () ->
-	      case mnesia:read({mod_mswitch_userlists, UserJid}) of
+	      case mnesia:read({mod_mswitch_userlists, SJID}) of
 			     [Lists] -> Lists;
 			     [] -> undefined
 			 end
@@ -107,9 +111,11 @@ get_lists(UserJid) ->
 	
 
 get_busses(UserJid, List) ->
+	SJID=short_jid(UserJid),
+	
 	Ret=mnesia:transaction(
       fun () ->
-	      case mnesia:read({mod_mswitch_userlist, UserJid, List}) of
+	      case mnesia:read({mod_mswitch_userlist, SJID, List}) of
 			     [List] -> List;
 			     [] -> undefined
 			 end
@@ -121,9 +127,11 @@ get_busses(UserJid, List) ->
 
 
 get_pid(UserJid) ->
+	SJID=short_jid(UserJid),
+	
 	Ret=mnesia:transaction(
       fun () ->
-	      case mnesia:read({mod_mswitch_consumers, UserJid}) of
+	      case mnesia:read({mod_mswitch_consumers, SJID}) of
 			     [Pid] -> Pid;
 			     [] -> undefined
 			 end
@@ -172,31 +180,41 @@ do_cget(Var, Func, Params) ->
 
 
 set_selection(UserJid, Selection) ->
+	SJID=short_jid(UserJid),
+	
+	?INFO_MSG("set_selection: user: ~p  selection: ~p", [SJID, Selection]),
 	mnesia:transaction(
 		fun() ->
-		  	mnesia:write(#mod_mswitch_selection{user= UserJid, selection= Selection})
+		  	mnesia:write(#mod_mswitch_selection{user= SJID, selection= Selection})
 		end
 	),
-	put({selection, UserJid}, Selection).
+	put({selection, SJID}, Selection).
 
 
 set_lists(UserJid, Lists) ->
+	SJID=short_jid(UserJid),
+	
+	?INFO_MSG("set_lists: user: ~p  lists: ~p", [SJID, Lists]),
 	mnesia:transaction(
 		fun() ->
-		  	mnesia:write(#mod_mswitch_userlists{user= UserJid, lists= Lists})
+		  	mnesia:write(#mod_mswitch_userlists{user= SJID, lists= Lists})
 		end
 	),
-	put({lists, UserJid}, Lists).
+	put({lists, SJID}, Lists).
 
 set_list(UserJid, List, Busses) ->
+	SJID=short_jid(UserJid),
+	?INFO_MSG("set_list: user: ~p  list: ~p  busses: ~p", [SJID, List, Busses]),
 	mnesia:transaction(
 		fun() ->
-		  	mnesia:write(#mod_mswitch_userlist{user= UserJid, list= List, busses=Busses})
+		  	mnesia:write(#mod_mswitch_userlist{user= SJID, list= List, busses=Busses})
 		end
 	),
-	put({busses, UserJid, List}, Busses).
+	put({busses, SJID, List}, Busses).
 
 set_pid(UserJid, Pid) ->
+	%SJID=short_jid(UserJid),
+	?INFO_MSG("set_pid: user: ~p  pid: ~p", [UserJid, Pid]),
 	mnesia:transaction(
 		fun() ->
 		  	mnesia:write(#mod_mswitch_consumers{user= UserJid, pid=Pid})
@@ -209,49 +227,51 @@ set_pid(UserJid, Pid) ->
 %% ----------------------          ------------------------------
 
 
-start_consumer(UserJID, Server, Priority) ->
+start_consumer(UserJid, Server, Priority) ->
+		
 	case mnesia:transaction(
 		fun () ->
-			case mnesia:read({mod_switch_consumers, UserJID}) of
-				[#mod_mswitch_consumers{pid = Pid}] ->
+			case mnesia:read({mod_switch_consumers, user=UserJid}) of
+				[#mod_mswitch_consumers{user=UserJid, pid = Pid}] ->
 					?INFO_MSG("Existing consumer, Pid: ~p", [Pid]),
 					{existing, Pid};
 				[] ->
-					do_start_consumer(UserJID, Server, Priority);
+					do_start_consumer(UserJid, Server, Priority);
 				_ ->
-					do_start_consumer(UserJID, Server, Priority)					
+					do_start_consumer(UserJid, Server, Priority)					
 			
 			end
 		end) of
 			{atomic, {new, _Pid}} ->
 				ok;
 			{atomic, {existing, Pid}} ->
-				Pid ! {presence, UserJID, Priority},
+				Pid ! {presence, UserJid, Priority},
 				ok;
 		
 			{aborted, {no_exists, _}} ->
 				% should only occur the first time around
-				do_start_consumer(UserJID, Server, Priority);
+				do_start_consumer(UserJid, Server, Priority);
 
 			Other ->
 				?ERROR_MSG("start_consumer, Other<~p>", [Other])
 	end.
  
-do_start_consumer(UserJID, Server, Priority) ->
-	Pid = spawn(get_consumer_server(UserJID, Server, Priority)),
+do_start_consumer(UserJid, Server, Priority) ->
+	Pid = spawn(get_consumer_server(UserJid, Server, Priority)),
 	Pid ! start,
 	?INFO_MSG("Starting consumer, Pid: ~p", [Pid]),
-	set_pid(UserJID, Pid),
-	set_consumer_pid(UserJID, Pid),
+	set_pid(UserJid, Pid),
+	set_consumer_pid(UserJid, Pid),
 	{new, Pid}.
 
 	
 
-stop_consumer(UserJID) ->
+stop_consumer(UserJid) ->
+	
 	mnesia:transaction(
 		fun () ->
-			case mnesia:read({mod_mswitch_consumers, UserJID}) of
-				[#mod_mswitch_consumers{pid = Pid}] ->
+			case mnesia:read({mod_mswitch_consumers, UserJid}) of
+				[#mod_mswitch_consumers{user=UserJid, pid = Pid}] ->
 					Pid ! unavailable,
 					ok;
 				[] ->
@@ -268,20 +288,21 @@ stop_consumer(UserJID) ->
  
 
 
-set_consumer_pid(UserJID, Pid) ->
-	put({consumer.pid, UserJID}, Pid).
+set_consumer_pid(UserJid, Pid) ->
+	put({consumer.pid, UserJid}, Pid).
 
 
-get_consumer_pid(UserJID) ->
-	Pid=get({consumer.pid, UserJID}),
-	get_consumer_pid(UserJID, Pid).
 
-get_consumer_pid(UserJID, undefined) ->
-	Pid=get_pid(UserJID),
-	put({consumer.pid}, Pid),
+get_consumer_pid(UserJid) ->
+	Pid=get({consumer.pid, UserJid}),
+	get_consumer_pid(UserJid, Pid).
+
+get_consumer_pid(UserJid, undefined) ->
+	Pid=get_pid(UserJid),
+	put({consumer.pid, UserJid}, Pid),
 	Pid;
 
-get_consumer_pid(_UserJID, Pid) ->
+get_consumer_pid(_UserJid, Pid) ->
 	Pid.
 
 
@@ -315,6 +336,8 @@ get_consumer_server(UserJID, Server, Priority) ->
 	end.
 
 
+%% NOTE: UserJID must be a 'real' JID  i.e. not a "string" version
+%%
 consumer_server(UserJID, Server, Priority) ->
 	receive
 		start ->
@@ -387,6 +410,14 @@ unsub(_ThisBot, UserJID) ->
 %% ----------------------      ------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%% MISC %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ----------------------      ------------------------------
+
+
+
+short_jid(Jid) ->
+	RFjid=jlib:jid_remove_resource(Jid),
+	jlib:jid_to_string(RFjid).
+
+
 
 extract_priority(Packet) ->
     case xml:get_subtag_cdata(Packet, "priority") of
