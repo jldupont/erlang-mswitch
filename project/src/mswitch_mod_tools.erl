@@ -13,7 +13,7 @@
 -define(LOG,            log).
 
 -record(mod_mswitch_userlists, {user, lists}).
--record(mod_mswitch_userlist,  {user, list, busses}).
+-record(mod_mswitch_userbusses,{userlist, busses}).
 -record(mod_mswitch_selection, {user, selection}).
 -record(mod_mswitch_consumers, {user, pid}).
 
@@ -37,8 +37,8 @@ create_tables() ->
 			[{attributes, record_info(fields, mod_mswitch_userlists)},
 			{disc_copies, [node()]}]),
 
-	Ret2=mnesia:create_table(mod_mswitch_userlist,
-			[{attributes, record_info(fields, mod_mswitch_userlist)},
+	Ret2=mnesia:create_table(mod_mswitch_userbusses,
+			[{attributes, record_info(fields, mod_mswitch_userbusses)},
 			{disc_copies, [node()]}]),
 	
 	Ret3=mnesia:create_table(mod_mswitch_selection,
@@ -119,7 +119,7 @@ get_busses(UserJid, List) ->
 	?INFO_MSG("get_busses: User: ~p", [SJID]),
 	Ret=mnesia:transaction(
       fun () ->
-	      case mnesia:read({mod_mswitch_userlist, SJID}) of
+	      case mnesia:read({mod_mswitch_userbusses, {SJID,List}}) of
 			     [Result] ->
 					 ?INFO_MSG("get_busses: list: ~p", [Result]),
 					 Result;
@@ -127,7 +127,7 @@ get_busses(UserJid, List) ->
 			 end
       end),
 	case Ret of
-		{atomic, {mod_mswitch_userlist, _, _, Result}} -> 
+		{atomic, {mod_mswitch_userbusses, _, Result}} -> 
 			?INFO_MSG("get_busses: User: ~p  Result: ~p", [SJID, Result]),
 			Result;
 		Other -> 
@@ -217,15 +217,15 @@ set_lists(UserJid, Lists) ->
 	?INFO_MSG("set_lists: Ret: ~p", [Ret]),
 	put({lists, SJID}, Lists).
 
-set_list(UserJid, List, Busses) ->
+set_busses(UserJid, List, Busses) ->
 	SJID=short_jid(UserJid),
-	?INFO_MSG("set_list: user: ~p  list: ~p  busses: ~p", [SJID, List, Busses]),
+	?INFO_MSG("set_busses: user: ~p  list: ~p  busses: ~p", [SJID, List, Busses]),
 	Ret=mnesia:transaction(
 		fun() ->
-		  	mnesia:write(#mod_mswitch_userlist{user= SJID, list= List, busses=Busses})
+		  	mnesia:write(#mod_mswitch_userbusses{userlist= {SJID,list}, busses=Busses})
 		end
 	),
-	?INFO_MSG("set_list: Ret: ~p", [Ret]),
+	?INFO_MSG("set_busses: Ret: ~p", [Ret]),
 	put({busses, SJID, List}, Busses).
 
 set_pid(UserJid, Pid) ->
