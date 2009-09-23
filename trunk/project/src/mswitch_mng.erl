@@ -1,6 +1,7 @@
 %% Author: Jean-Lou Dupont
 %% Created: 2009-08-17
 %% Description: Management functions for mswitch
+%%
 -module(mswitch_mng).
 
 %%

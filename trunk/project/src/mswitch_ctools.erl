@@ -6,7 +6,6 @@
 %%
 %% The main function of this module is 'config' @see config/3.
 %%
-%%
 -module(mswitch_ctools).
 -compile(export_all).
 

@@ -243,8 +243,40 @@ set_pid(UserJid, Pid) ->
 %%%%%%%%%%%%%%%%%%%%%%%%% CONSUMER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ----------------------          ------------------------------
 
-
 start_consumer(UserJid, Server, Priority) ->
+	ProcName=make_consumer_name(UserJid),
+	ProcPid=whereis(ProcName),
+	maybe_start_consumer(ProcName, ProcPid, UserJid, Server, Priority).
+
+maybe_start_consumer(ProcName, undefined, UserJid, Server, Priority) ->
+	Pid = spawn(get_consumer_server(UserJid, Server, Priority)),
+	register(ProcName, Pid),
+	Pid ! start,
+	?INFO_MSG("Starting consumer, ProcName<~p> Pid: ~p", [ProcName, Pid]);
+
+maybe_start_consumer(_ProcName, _Pid, UserJid, _Server, _Priority) ->
+	?INFO_MSG("Consumer already started for User<~p>", [UserJid]),
+	already_started.
+
+
+stop_consumer(UserJid) ->
+	ProcName=make_consumer_name(UserJid),
+	ProcPid=whereis(ProcName),
+	try
+		ProcPid ! unavailable
+	catch
+		_:_ ->
+			noop
+	end.
+
+
+make_consumer_name(UserJid) ->
+	SJid=short_jid(UserJid),
+	erlang:list_to_atom(SJid).
+
+	
+
+old_start_consumer(UserJid, Server, Priority) ->
 		
 	case mnesia:transaction(
 		fun () ->
@@ -276,7 +308,7 @@ start_consumer(UserJid, Server, Priority) ->
  
 do_start_consumer(UserJid, Server, Priority) ->
 	Pid = spawn(get_consumer_server(UserJid, Server, Priority)),
-	Pid ! start,
+	Pid ! {start, Pid},
 	?INFO_MSG("Starting consumer, Pid: ~p", [Pid]),
 	set_pid(UserJid, Pid),
 	set_consumer_pid(UserJid, Pid),
@@ -284,7 +316,7 @@ do_start_consumer(UserJid, Server, Priority) ->
 
 	
 
-stop_consumer(UserJid) ->
+old_stop_consumer(UserJid) ->
 	
 	mnesia:transaction(
 		fun () ->
@@ -359,7 +391,7 @@ get_consumer_server(UserJID, Server, Priority) ->
 consumer_server(UserJID, Server, Priority) ->
 	receive
 		start ->
-			?INFO_MSG("Consumer started, User<~p> Pid: ~p", [UserJID, self()]),
+			?INFO_MSG("Consumer started, User<~p>  self(): ~p", [UserJID, self()]),
 			?MSWITCH:publish(debug, {mod_mswitch, consumer.started, UserJID}),
 			consumer_init(UserJID, Server, Priority);
 		
@@ -370,10 +402,7 @@ consumer_server(UserJID, Server, Priority) ->
 		{presence, UserJID, Priority} ->
 			noop;
 		
-		{busses, Busses} ->
-			?MSWITCH:subscribe(Busses);
-		
-		{From, Bus, Msg} ->
+		{mswitch, From, Bus, Msg} ->
 			?INFO_MSG("mswitch msg: From<~p> Bus<~p> Msg<~p>", [From, Bus, Msg]),
 			handle_mswitch(Server, UserJID, From, Bus, Msg);
 		
@@ -388,6 +417,16 @@ consumer_server(UserJID, Server, Priority) ->
 	consumer_server(UserJID, Server, Priority).
 
 
+mailbox({FromNode, Server, Bus, Message}) ->
+	try
+		Server ! {mswitch, FromNode, Bus, Message}
+		,?INFO_MSG("mailbox rx: bus<~p> msg<~p>", [Bus, Message])
+	catch
+		X:Y -> %noop
+			?INFO_MSG("mailbox: X<~p> Y<~p>", [X,Y])
+	end.
+
+
 do_reload(ServerPid, User) ->
 	ListSel=get_selection(User),
 	Busses=get_busses(User, ListSel),
@@ -398,11 +437,13 @@ maybe_subscribe(User, _ServerPid, List, undefined) ->
 	?INFO_MSG("No busses for user: ~p selection: ~p", [User, List]);
 	
 maybe_subscribe(User, ServerPid, _List, Busses) when is_list(Busses) ->
-	?INFO_MSG("Subscribing user: ~p to busses: ~p", [User, Busses]),
-	?MSWITCH:subscribe(ServerPid, Busses);
+	?INFO_MSG("Subscribing user: ~p to busses: ~p  Pid:~p ", [User, Busses, ServerPid]),
+	ProcName=make_consumer_name(User),
+	?MSWITCH:subscribe({?MODULE, mailbox, ProcName}, Busses);
 
 maybe_subscribe(User, _ServerPid, List, Busses) ->
 	?ERROR_MSG("maybe_subscribe: exception: User: ~p  List: ~p  Busses: ~p", [User, List, Busses]).
+
 
 
 handle_mswitch(Server, UserJID, From, Bus, Msg) ->
