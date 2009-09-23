@@ -106,8 +106,8 @@ add_cwd() ->
 subscribe(_, {_}) ->
 	{error, invalid_bus};
 
-subscribe(_, Bus) when length(Bus)==0 ->
-	{error, invalid_bus};
+%subscribe(_, Bus) when length(Bus)==0 ->
+%	{error, invalid_bus};
 
 subscribe({}, _) ->
 	{error, invalid_mailbox};
@@ -345,9 +345,6 @@ loop() ->
 %% ===============
 %%
 %% @private
-handle(From, _FromNode, {subscribe, _MailBox, []}) ->
-	reply(From, ok);
-
 handle(From, FromNode, {subscribe, MailBox, Bus}) ->
 	%io:format("subscribe: FromNode<~p> Mailbox<~p> Bus<~p>~n", [FromNode, MailBox, Bus]),
 	?TOOLS:msg("subscribe: node[~p] bus[~p]", [FromNode, Bus]),
