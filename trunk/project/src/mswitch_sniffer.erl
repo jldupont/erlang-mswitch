@@ -92,20 +92,25 @@ handle(FromNode, Bus, Message) ->
 	do_handle(Nodes, FromNode, Bus, Message).
 
 do_handle([], FromNode, Bus, Message) ->
-	io:format("from<~p> bus<~p> msg<~p>~n", [FromNode, Bus, Message]);
+	print_msg(FromNode, Bus, Message);
+	%io:format("from<~p> bus<~p> msg<~p>~n", [FromNode, Bus, Message]);
 
 
 do_handle(Nodes, FromNode, Bus, Message) ->
 	%io:format("FromNode<~p>~n", [FromNode]),
 	case lists:member(FromNode, Nodes) of
 		true ->
-			io:format("from<~p> bus<~p> msg<~p>~n", [FromNode, Bus, Message]);
+			print_msg(FromNode, Bus, Message);
+			%io:format("from<~p> bus<~p> msg<~p>~n", [FromNode, Bus, Message]);
 		false ->
 			filtered
 	end.
 
+print_msg(FromNode, Bus, Message) ->
+	Msg={FromNode, Bus, Message},
+	io:format("~p~n", [Msg]).
 
-
+	
 
 
 format_nodes(Nodes) ->
