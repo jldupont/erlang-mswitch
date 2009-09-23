@@ -420,7 +420,7 @@ consumer_server(UserJID, Server, Priority) ->
 mailbox({FromNode, Server, Bus, Message}) ->
 	try
 		Server ! {mswitch, FromNode, Bus, Message}
-		,?INFO_MSG("mailbox rx: bus<~p> msg<~p>", [Bus, Message])
+		%,?INFO_MSG("mailbox rx: bus<~p> msg<~p>", [Bus, Message])
 	catch
 		X:Y -> %noop
 			?INFO_MSG("mailbox: X<~p> Y<~p>", [X,Y])
