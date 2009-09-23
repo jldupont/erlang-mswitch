@@ -403,7 +403,7 @@ consumer_server(UserJID, Server, Priority) ->
 			noop;
 		
 		{mswitch, From, Bus, Msg} ->
-			?INFO_MSG("mswitch msg: From<~p> Bus<~p> Msg<~p>", [From, Bus, Msg]),
+			%?INFO_MSG("mswitch msg: From<~p> Bus<~p> Msg<~p>", [From, Bus, Msg]),
 			handle_mswitch(Server, UserJID, From, Bus, Msg);
 		
 		unavailable ->

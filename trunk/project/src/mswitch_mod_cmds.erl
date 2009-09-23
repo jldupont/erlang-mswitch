@@ -5,23 +5,17 @@
 %% @doc
 %%
 %%  = Commands =
-%%  /                    Display list of commands
-%%  /add bn              Adds bus 'bn' to current active list
-%%  /add b1 b2 ...       Adds busses [b1, b2, ...] to current active list
-%%  /sub                 Display current list subscriptions (lists the bus/busses) 
-%%  /create X            Create list X
-%%  /del X               Unsubscribe & delete list X 
-%%	/sel                 Display current active list
-%%	/sel X               Select list X as current
+%%  -                    Display list of commands
+%%  -add bn              Adds bus 'bn' to current active list
+%%  -add b1 b2 ...       Adds busses [b1, b2, ...] to current active list
+%%  -rem b1 b2 ...       Removes busses [b1, b2, ...] from the current active list  
+%%  -sub                 Display current list subscriptions (lists the bus/busses) 
+%%  -create X            Create list X
+%%  -del X               Unsubscribe & delete list X 
+%%	-sel                 Display current active list
+%%	-sel X               Select list X as current
 %%
-%% @TODO
-%%  /lists               Display the available lists
-%%
-%%  = Data Model =
-%%
-%%	{userlists, User}       -> [Lists]
-%%	{userlist,  User, List}	-> [Busses]
-%%	{selection, User}       -> List
+%%  -lists               Display the available lists
 %%
 
 -module(mswitch_mod_cmds).
@@ -60,6 +54,10 @@ dispatch_cmd(ThisBot, User, ["-sub"|Rest]) ->
 
 dispatch_cmd(ThisBot, User, ["-add"|Rest]) ->
 	{Status, Msg, Params}=do_add(ThisBot, User, Rest),
+	send_command_reply(ThisBot, User, {Status, Msg, Params});
+
+dispatch_cmd(ThisBot, User, ["-rem"|Rest]) ->
+	{Status, Msg, Params}=do_rem(ThisBot, User, Rest),
 	send_command_reply(ThisBot, User, {Status, Msg, Params});
 
 dispatch_cmd(ThisBot, User, ["-create"|Rest]) ->
@@ -138,6 +136,16 @@ do_add(_ThisBot, User, Params) ->
 	do_sync(User),
 	{ok, "Selection<~p> Busses<~p>", [Sel, NewBusses]}.
 
+%% Removes bus/busses from the current selection
+%%
+do_rem(_ThisBot, User, Params) ->
+	Sel=?TOOLS:cget(selection, User),
+	Busses=?TOOLS:cget(busses, {User, Sel}),
+	FilteredBusses=format_busses(Params),
+	NewBusses=rem_unique(Busses, FilteredBusses),
+	?TOOLS:set_busses(User, Sel, NewBusses),
+	do_sync(User),
+	{ok, "Selection<~p> Busses<~p>", [Sel, NewBusses]}.
 
 %% Creates a list if not already existing
 %%
@@ -279,4 +287,15 @@ add_unique(List, Elements) when is_list(Elements) ->
 add_unique(List, Element) ->
 	Filtered=List--[Element],
 	Filtered++[Element].
+
+
+rem_unique(undefined, Elements) ->
+	add_unique([], Elements);
+
+rem_unique(List, Elements) when is_list(Elements) ->
+	List--Elements;
+
+rem_unique(List, Element) ->
+	List--[Element].
+
 
