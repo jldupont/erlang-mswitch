@@ -2,6 +2,7 @@
 %% Created: 2009-08-19
 %% Description: Common function tools
 -module(mswitch_tools).
+-compile(export_all).
 
 %%
 %% Include files
@@ -57,6 +58,8 @@
 		,get_special/3
 		
 		,integer_to_hex/1
+		
+		,is_string/1
 		 ]).
 
 %% @doc Ternary operator
@@ -819,3 +822,135 @@ filter_on_patterns(Patterns, List, Acc) ->
 	filter_on_patterns(Patterns, Rest, Acc++[Item]).
 
 
+%% @doc Estimates if the provided term is a human readable string
+%%
+is_string([]) ->
+    false;
+is_string(Term) ->
+    is_string1(Term).
+
+is_string1([H|T]) when is_integer(H), H >= $\s, H < 255 ->
+    is_string1(T);
+is_string1([$\n|T]) -> is_string1(T);
+is_string1([$\r|T]) -> is_string1(T);
+is_string1([$\t|T]) -> is_string1(T);
+is_string1([$\v|T]) -> is_string1(T);
+is_string1([$\b|T]) -> is_string1(T);
+is_string1([$\f|T]) -> is_string1(T);
+is_string1([$\e|T]) -> is_string1(T);
+is_string1([H|T]) when is_list(H) ->
+    case is_string1(H) of
+	true -> is_string1(T);
+	_    -> false
+    end;
+is_string1([]) -> true;
+is_string1(_) ->  false.
+
+
+
+is_char(C) when is_integer(C), C >= $\s, C < 255 -> true;
+is_char($\n) -> true;
+is_char($\r) -> true;
+is_char($\t) -> true;
+is_char($\v) -> true;
+is_char($\b) -> true;
+is_char($\f) -> true;
+is_char($\e) -> true;
+is_char(___) -> false.
+
+
+
+%% @doc Parses the term to the defined Erlang types
+%%		and also support "estimated" strings. 
+%%
+%%  {atom, Atom}, {int, Int}, {float, Float}
+%%  {pid, Pid}, {port, Port}
+%%
+parse_term(Term) ->
+	pt(Term, []).
+
+pt([], [Acc]) -> Acc;
+pt([], Acc)   -> Acc;
+
+pt(MaybeString=String=List, Acc) when is_list(MaybeString) ->
+	case is_string(MaybeString) of
+		true ->
+			Acc++[{string, lists:flatten(String)}];
+		false ->
+			[H|T]=List,
+			Acc ++ [pt(H)|pt(T)]
+	end;
+
+pt(U, Acc) ->
+	Acc++[{unknown, U}].
+
+pt([]) -> [];
+pt(Atom) when is_atom(Atom) -> {atom, Atom};
+pt(Int) when is_integer(Int) -> {int, Int};
+pt(Float) when is_float(Float) -> {float, Float};
+pt(Pid) when is_pid(Pid) ->	{pid, Pid};
+pt(Port) when is_port(Port) -> {port, Port};
+pt(T) ->  pt(T, []).
+
+
+print_format_term(Term) ->
+	PT=parse_term(Term),
+	io:format("Parsed: ~p", [PT]),
+	{S, A} = do_pft(PT, "", []),
+	{"["++S++"]", A}.
+
+
+do_pft([], S, A) ->
+	{S, A};
+
+do_pft([H|T], S, A) ->
+	case is_list(H) of
+		true ->
+			{HS, HA}=do_pft(H, "", []),
+			do_pft(T, S++"["++strip(HS)++"]", A++HA);
+		false ->
+			{HS, HA}=pft(H),
+			do_pft(T, S++HS, A++HA)
+	end.
+
+pft({string, Str}) ->
+	{" \"~s\",", [Str]};
+
+pft({_, Term}) ->
+	{" ~p,", [Term]}.
+
+
+strip(T) ->
+	case T of
+		[] -> [];
+		T -> string:strip(T, right, $,)
+	end.
+
+pformat(Term) ->
+	{S, A}=print_format_term(Term),
+	io:format(S++"~n", A).
+
+
+
+	
+	
+
+testpt() ->
+	TP=["allo", allo, 666, ["bonjour", " toi", 777]],
+	parse_term(TP).
+
+testpft() ->
+	TP=["allo", allo, 666, ["bonjour", " toi", 777]],
+	io:format("Original: ~p~n~n", [TP]),
+	print_format_term(TP).
+
+testp() ->
+	TP=["allo", allo, 666, ["bonjour", " toi", 777]],
+	pformat(TP).
+
+testp2() ->
+	TP="allo "++[atom, 666]++" end.",
+	pformat(TP).
+
+testp3() ->
+	is_string("allo ").

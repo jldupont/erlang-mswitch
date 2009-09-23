@@ -116,7 +116,7 @@ get_lists(UserJid) ->
 
 get_busses(UserJid, List) ->
 	SJID=short_jid(UserJid),
-	?INFO_MSG("get_busses: User: ~p", [SJID]),
+	?INFO_MSG("get_busses: User: ~p  List: ~p", [SJID, List]),
 	Ret=mnesia:transaction(
       fun () ->
 	      case mnesia:read({mod_mswitch_userbusses, {SJID,List}}) of
@@ -222,7 +222,7 @@ set_busses(UserJid, List, Busses) ->
 	?INFO_MSG("set_busses: user: ~p  list: ~p  busses: ~p", [SJID, List, Busses]),
 	Ret=mnesia:transaction(
 		fun() ->
-		  	mnesia:write(#mod_mswitch_userbusses{userlist= {SJID,list}, busses=Busses})
+		  	mnesia:write(#mod_mswitch_userbusses{userlist= {SJID,List}, busses=Busses})
 		end
 	),
 	?INFO_MSG("set_busses: Ret: ~p", [Ret]),
@@ -327,7 +327,7 @@ get_consumer_pid(_UserJid, Pid) ->
 
 %% @hidden
 consumer_init(UserJID, Server, Priority) ->
-	?INFO_MSG("**** starting consumer for jid: ~p", [UserJID]),
+	%?INFO_MSG("**** starting consumer for jid: ~p", [UserJID]),
     SelfPid = self(),
     spawn_link(fun () ->
 				erlang:monitor(process, SelfPid),
@@ -359,13 +359,13 @@ get_consumer_server(UserJID, Server, Priority) ->
 consumer_server(UserJID, Server, Priority) ->
 	receive
 		start ->
-			?INFO_MSG("Consumer started, Pid: ~p", [self()]),
+			?INFO_MSG("Consumer started, User<~p> Pid: ~p", [UserJID, self()]),
 			?MSWITCH:publish(debug, {mod_mswitch, consumer.started, UserJID}),
 			consumer_init(UserJID, Server, Priority);
 		
 		reload ->
-			do_reload(self(), UserJID),
-			?INFO_MSG("got reload!", []);
+			do_reload(self(), UserJID);
+			%?INFO_MSG("got reload!", []);
 		
 		{presence, UserJID, Priority} ->
 			noop;
@@ -373,8 +373,9 @@ consumer_server(UserJID, Server, Priority) ->
 		{busses, Busses} ->
 			?MSWITCH:subscribe(Busses);
 		
-		{mswitch, Bus, Msg} ->
-			handle_mswitch(UserJID, Bus, Msg);
+		{From, Bus, Msg} ->
+			?INFO_MSG("mswitch msg: From<~p> Bus<~p> Msg<~p>", [From, Bus, Msg]),
+			handle_mswitch(Server, UserJID, From, Bus, Msg);
 		
 		unavailable ->
 			set_pid(UserJID, undefined),
@@ -404,10 +405,17 @@ maybe_subscribe(User, _ServerPid, List, Busses) ->
 	?ERROR_MSG("maybe_subscribe: exception: User: ~p  List: ~p  Busses: ~p", [User, List, Busses]).
 
 
-handle_mswitch(UserJID, Bus, Msg) ->
-	?INFO_MSG("mswitch rx: Bus: ~p  Msg: ~p", [Bus, Msg]),
-	ok.
-
+handle_mswitch(Server, UserJID, From, Bus, Msg) ->
+	M = {From, Bus, Msg},
+	B = io_lib:format("~p", [M]),
+    XmlBody = {xmlelement, "message",
+	       [{"type", "chat"},
+		{"from", jlib:jid_to_string(Server)},
+		{"to", jlib:jid_to_string(UserJID)}],
+	       [{xmlelement, "body", [],
+		 [{xmlcdata, B}]}]},
+    %?LOG(msg, "Delivering ~p -> ~p~n~p", [From, To, XmlBody]),
+    ejabberd_router:route(Server, UserJID, XmlBody).
 
 
 

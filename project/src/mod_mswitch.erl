@@ -147,13 +147,6 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 
-%safe_route(From, To, Packet) ->
-	%?LOG(safe_route, "From: ~p To: ~p", [From, To]).
-%	?MSWITCH:publish(debug, {mod_mswitch, From, To, Packet}).
-
-
-
-
 
 	
 %% @TODO filter/block
