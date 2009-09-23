@@ -87,6 +87,8 @@ add_cwd() ->
 
 %% Subscribe to a Bus with message delivery to MailBox
 %%
+%% Having an empty list for the Bus parameter unsubscribes the caller.
+%%
 %% The 'Server' parameter corresponds to a registered Pid used
 %% for receiving messages. The 'Module' and 'Function' parameters
 %% correspond to a valid Module:Function for handling the
@@ -94,7 +96,7 @@ add_cwd() ->
 %%
 %% @spec subscribe(MailBox, Bus) -> {ServerPid, ok} | {error, Reason}
 %%
-%% Bus = atom() | [atom()]
+%% Bus = atom() | [atom()] | []
 %% MailBox = {Module, Function, Server} | Server
 %% Server = atom() | pid()
 %% Module = atom()
