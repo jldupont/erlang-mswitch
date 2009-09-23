@@ -132,7 +132,8 @@ do_add(_ThisBot, _User, []) ->
 do_add(_ThisBot, User, Params) ->
 	Sel=?TOOLS:cget(selection, User),
 	Busses=?TOOLS:cget(busses, {User, Sel}),
-	NewBusses=add_unique(Busses, Params),
+	FilteredBusses=format_busses(Params),
+	NewBusses=add_unique(Busses, FilteredBusses),
 	?TOOLS:set_busses(User, Sel, NewBusses),
 	do_sync(User),
 	{ok, "Selection<~p> Busses<~p>", [Sel, NewBusses]}.
@@ -171,8 +172,17 @@ do_lists(_ThisBot, User) ->
 
 
 do_sync(UserJID) ->
-	Pid = ?TOOLS:get_consumer_pid(UserJID),
+	Pid = get_consumer_pid_new(UserJID),
 	safe_msg(UserJID, Pid, reload).
+
+
+
+get_consumer_pid_new(UserJid) ->
+	SJid=?TOOLS:short_jid(UserJid),
+	ProcName=erlang:list_to_atom(SJid),
+	whereis(ProcName).
+	
+
 
 
 safe_msg(UserJID, Pid, Msg) ->
@@ -243,6 +253,20 @@ iter_do_del(User, [El|Rest], Acc) ->
 	iter_do_del(User, Rest, Acc++[El]).
 
 	
+
+format_busses(Busses) ->
+	fb(Busses, []).
+
+fb([], Acc) -> Acc;
+fb([H|T], Acc) when is_atom(H) ->
+	fb(T, Acc++[H]);
+
+fb([H|T], Acc) when is_list(H) ->
+	fb(T, Acc++[erlang:list_to_atom(H)]);
+
+fb([_H|T], Acc) ->
+	fb(T, Acc).
+
 
 
 add_unique(undefined, Elements) ->

@@ -4,7 +4,7 @@
 %% NOTE: start with a unique short-name for
 %%       each instance e.g. erl -sname test1
 %%                          erl -sname test2
--module(test).
+-module(mswitch_test).
 
 -compile(export_all).
 
@@ -64,8 +64,8 @@ loop() ->
 	after ?TIMEOUT ->
 
 		Count=pvadd(count,1),
-		Ret=mswitch:publish(notif, {count, "Count: "++erlang:integer_to_list(Count)}),
-		io:format("Ret: ~p~n", [Ret])
+		Ret=mswitch:publish(notif, {count, "Count: "++erlang:integer_to_list(Count)})
+		%io:format("Ret: ~p~n", [Ret])
 		
 	end,
 	loop().
@@ -73,7 +73,7 @@ loop() ->
 
 subscribe(Server, Busses) ->
 	io:format("test: subscribe [~p]~n",[Busses]),
-	mswitch:subscribe({test, inbox, Server}, Busses).
+	mswitch:subscribe({?MODULE, inbox, Server}, Busses).
 
 
 add(undefined, Value) ->
@@ -86,7 +86,7 @@ add(Var, Value) ->
 
 pvadd(Var, Value) ->
 	Count=get(Var),
-	NewCount = test:add(Count, Value),
+	NewCount = add(Count, Value),
 	put(Var, NewCount),
 	NewCount.
 	

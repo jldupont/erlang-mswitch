@@ -2,7 +2,6 @@
 %% Created: 2009-09-05
 %% Description: Command-line tools
 %%
-%%
 -module(mswitch_clt).
 -compile(export_all).
 

@@ -258,7 +258,7 @@ rpc(FromNode, Message, RemoteNode) ->
 
 %% @private
 dorpc(FromNode, RemoteNode, Message) ->
-	%%io:format("dorpc: Fnode[~p] Rnode[~p] Message[~p]~n", [FromNode, RemoteNode, Message]),
+	%io:format("dorpc: Fnode[~p] Rnode[~p] Message[~p]~n", [FromNode, RemoteNode, Message]),
 	
 	%% If the mswitch daemon is down, this call will fail first and thus
 	%% {error, mswitch_node_down} will be received by the caller
@@ -349,6 +349,7 @@ handle(From, _FromNode, {subscribe, _MailBox, []}) ->
 	reply(From, ok);
 
 handle(From, FromNode, {subscribe, MailBox, Bus}) ->
+	%io:format("subscribe: FromNode<~p> Mailbox<~p> Bus<~p>~n", [FromNode, MailBox, Bus]),
 	?TOOLS:msg("subscribe: node[~p] bus[~p]", [FromNode, Bus]),
 	?MNG:add_sub(Bus, {FromNode, MailBox}),
 	
@@ -462,13 +463,14 @@ sendto(FromNode, To, Bus, Message) ->
 	%% the 'subscribe' API call so do we need more check here?
 	
 	{DestNode, {Module, Function, Server}} = To,
+	%io:format("sendto: Dst[~p] Mod[~p] Func[~p] Msg[~p]~n", [DestNode, Module, Function, Message]),
 	?TOOLS:msg("sendto: Dst[~p] Mod[~p] Func[~p] Msg[~p]", [DestNode, Module, Function, Message]),
 	
 	try rpc:call(DestNode, Module, Function, [{FromNode, Server, Bus, Message}]) of
 		
 		%% Subscriber probably disappeared...
 		{badrpc, Reason} ->
-			%io:format("sendto exception, Reason<~p>~n", [Reason]),
+			io:format("sendto exception, Reason<~p>~n", [Reason]),
 			?MNG:delete_node(DestNode),
 			
 			%% system bus notification
