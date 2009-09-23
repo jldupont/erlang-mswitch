@@ -159,11 +159,8 @@ route(From, To, Packet) ->
 safe_route(From, To, Packet) ->
     case catch do_route(From, To, Packet) of
 	{'EXIT', Reason} ->
-		%?LOG(safe_route, "Routed FAILED Reason: ~p From:~p  To: ~p", [Reason, From, To]),
 	    ?ERROR_MSG("MOD_MSWITCH: ~p~nwhen processing: ~p", [Reason, {From, To, Packet}]);
-	_ ->
-		%?LOG(safe_route, "Routed From:~p  To: ~p", [From, To]),
-	    ok
+	_ -> ok
     end.
  
 do_route(#jid{lserver = FromServer} = From,
@@ -197,7 +194,6 @@ do_route(From, To, {xmlelement, "presence", _, _} = Packet) ->
 	    ?TOOLS:send_presence(To, From, ""),
 	    ?TOOLS:start_consumer(From, To, ?TOOLS:extract_priority(Packet));
 	"unavailable" ->
-		%ok;
 	    ?TOOLS:stop_consumer(From);
  
 	"probe" ->

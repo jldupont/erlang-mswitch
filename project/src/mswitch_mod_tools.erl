@@ -15,15 +15,14 @@
 -record(mod_mswitch_userlists, {user, lists}).
 -record(mod_mswitch_userbusses,{userlist, busses}).
 -record(mod_mswitch_selection, {user, selection}).
--record(mod_mswitch_consumers, {user, pid}).
 
 
 
 send_presence(From, To, "") ->
-    ?LOG(send_presence, "Sending sub reply of type ((available))~n~p -> ~p", [From, To]),
+    %?LOG(send_presence, "Sending sub reply of type ((available))~n~p -> ~p", [From, To]),
     ejabberd_router:route(From, To, {xmlelement, "presence", [], []});
 send_presence(From, To, TypeStr) ->
-    ?LOG(send_presence, "Sending sub reply of type ~p~n~p -> ~p", [TypeStr, From, To]),
+    %?LOG(send_presence, "Sending sub reply of type ~p~n~p -> ~p", [TypeStr, From, To]),
     ejabberd_router:route(From, To, {xmlelement, "presence", [{"type", TypeStr}], []}).
 
 
@@ -45,11 +44,7 @@ create_tables() ->
 			[{attributes, record_info(fields, mod_mswitch_selection)},
 			{disc_copies, [node()]}]),
 
-	Ret4=mnesia:create_table(mod_mswitch_consumers,
-			[{attributes, record_info(fields, mod_mswitch_consumers)}
-			]),
-	
-	process_results([Ret1, Ret2, Ret3, Ret4])
+	process_results([Ret1, Ret2, Ret3])
 	
 	catch X:Y -> 
 		{error, {X, Y}}
@@ -136,20 +131,6 @@ get_busses(UserJid, List) ->
 	end.
 
 
-get_pid(UserJid) ->
-	Ret=mnesia:transaction(
-      fun () ->
-	      case mnesia:read({mod_mswitch_consumers, UserJid}) of
-			     [Pid] -> Pid;
-			     [] -> undefined
-			 end
-      end),
-	case Ret of
-		{atomic, {mod_mswitch_consumers, _, Result}} -> Result;
-		_ -> undefined
-	end.
-
-
 %% ----------------------        ------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%% CACHED %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%% GET    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -228,16 +209,6 @@ set_busses(UserJid, List, Busses) ->
 	?INFO_MSG("set_busses: Ret: ~p", [Ret]),
 	put({busses, SJID, List}, Busses).
 
-set_pid(UserJid, Pid) ->
-	%SJID=short_jid(UserJid),
-	?INFO_MSG("set_pid: user: ~p  pid: ~p", [UserJid, Pid]),
-	Ret=mnesia:transaction(
-		fun() ->
-		  	mnesia:write(#mod_mswitch_consumers{user= UserJid, pid=Pid})
-		end
-	),
-	?INFO_MSG("set_pid: Ret: ~p", [Ret]),
-	put({consumer.pid, UserJid}, Pid).
 
 %% ----------------------          ------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%% CONSUMER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -275,85 +246,8 @@ make_consumer_name(UserJid) ->
 	erlang:list_to_atom(SJid).
 
 	
-
-old_start_consumer(UserJid, Server, Priority) ->
-		
-	case mnesia:transaction(
-		fun () ->
-			case mnesia:read({mod_switch_consumers, UserJid}) of
-				[#mod_mswitch_consumers{user=UserJid, pid = Pid}] ->
-					?INFO_MSG("Existing consumer, Pid: ~p", [Pid]),
-					{existing, Pid};
-				[] ->
-					do_start_consumer(UserJid, Server, Priority);
-				_ ->
-					do_start_consumer(UserJid, Server, Priority)					
-			
-			end
-		end) of
-			{atomic, {new, _Pid}} ->
-				ok;
-			{atomic, {existing, Pid}} ->
-				Pid ! {presence, UserJid, Priority},
-				ok;
-		
-			{aborted, {no_exists, _}} ->
-				% should only occur the first time around
-				do_start_consumer(UserJid, Server, Priority);
-
-			Other ->
-				?ERROR_MSG("start_consumer, Other<~p>", [Other]),
-				do_start_consumer(UserJid, Server, Priority)
-	end.
- 
-do_start_consumer(UserJid, Server, Priority) ->
-	Pid = spawn(get_consumer_server(UserJid, Server, Priority)),
-	Pid ! {start, Pid},
-	?INFO_MSG("Starting consumer, Pid: ~p", [Pid]),
-	set_pid(UserJid, Pid),
-	set_consumer_pid(UserJid, Pid),
-	{new, Pid}.
-
-	
-
-old_stop_consumer(UserJid) ->
-	
-	mnesia:transaction(
-		fun () ->
-			case mnesia:read({mod_mswitch_consumers, UserJid}) of
-				[#mod_mswitch_consumers{user=UserJid, pid = Pid}] ->
-					Pid ! unavailable,
-					ok;
-				[] ->
-					ok;
-				_ ->
-					ok
-			end
-		end),
-	ok.
-
-
-
-
  
 
-
-set_consumer_pid(UserJid, Pid) ->
-	put({consumer.pid, UserJid}, Pid).
-
-
-
-get_consumer_pid(UserJid) ->
-	Pid=get({consumer.pid, UserJid}),
-	get_consumer_pid(UserJid, Pid).
-
-get_consumer_pid(UserJid, undefined) ->
-	Pid=get_pid(UserJid),
-	put({consumer.pid, UserJid}, Pid),
-	Pid;
-
-get_consumer_pid(_UserJid, Pid) ->
-	Pid.
 
 
 
@@ -397,7 +291,6 @@ consumer_server(UserJID, Server, Priority) ->
 		
 		reload ->
 			do_reload(self(), UserJID);
-			%?INFO_MSG("got reload!", []);
 		
 		{presence, UserJID, Priority} ->
 			noop;
@@ -407,7 +300,6 @@ consumer_server(UserJID, Server, Priority) ->
 			handle_mswitch(Server, UserJID, From, Bus, Msg);
 		
 		unavailable ->
-			set_pid(UserJID, undefined),
 			exit(normal);
 	
 		Other ->
@@ -420,10 +312,9 @@ consumer_server(UserJID, Server, Priority) ->
 mailbox({FromNode, Server, Bus, Message}) ->
 	try
 		Server ! {mswitch, FromNode, Bus, Message}
-		%,?INFO_MSG("mailbox rx: bus<~p> msg<~p>", [Bus, Message])
 	catch
-		X:Y -> %noop
-			?INFO_MSG("mailbox: X<~p> Y<~p>", [X,Y])
+		X:Y -> 
+			?WARNING_MSG("mailbox exception: X<~p> Y<~p>", [X,Y])
 	end.
 
 
@@ -458,19 +349,6 @@ handle_mswitch(Server, UserJID, From, Bus, Msg) ->
     %?LOG(msg, "Delivering ~p -> ~p~n~p", [From, To, XmlBody]),
     ejabberd_router:route(Server, UserJID, XmlBody).
 
-
-
-%% ----------------------           ------------------------------
-%%%%%%%%%%%%%%%%%%%%%%%%% SUB/UNSUB %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ----------------------           ------------------------------
-
-
-
-sub(_ThisBot, _UserJID) ->
-	ok.
-
-unsub(_ThisBot, UserJID) ->
-	stop_consumer(UserJID).
 
 
 

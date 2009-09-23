@@ -73,6 +73,8 @@ erase_node(Context, Node) -> ?TOOLS:rem_from_var({mswitch, Context, nodes}, Node
 %%
 %% @private
 add_sub(Bus, {Node, MailBox}) ->
+	
+	%% start with a clean slate
 	delete_node(Node),
 	add_sub(daemon, Bus, {Node, MailBox}).
 
@@ -112,7 +114,7 @@ delete_node(Node) ->
 	delete_node(daemon, Node).
 	
 delete_node(Context, Node) ->
-	io:format("Deleting context[~p] node[~p]~n", [Context, Node]),
+	%io:format("Deleting context[~p] node[~p]~n", [Context, Node]),
 	?TOOLS:msg("Deleting context[~p] node[~p]", [Context, Node]),
 	
 	%% delete associated mailbox

@@ -847,7 +847,8 @@ is_string1([]) -> true;
 is_string1(_) ->  false.
 
 
-
+%% @doc Is human readable character?
+%%
 is_char(C) when is_integer(C), C >= $\s, C < 255 -> true;
 is_char($\n) -> true;
 is_char($\r) -> true;
@@ -932,7 +933,9 @@ pformat(Term) ->
 
 
 
-	
+%% ----------------------------------------------------------------------
+%% ----------------------------------------------------------------------
+
 	
 
 testpt() ->

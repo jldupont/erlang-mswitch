@@ -27,7 +27,7 @@
 -define(TOOLS, mswitch_mod_tools).
 -define(LOG,   ?TOOLS:log).
 
--define(CMDS, ["-", "-add", "-sub", "-create", "-del", "-sel", "-lists" ]).
+-define(CMDS, ["-", "-add", "-rem", "-sub", "-create", "-del", "-sel", "-lists" ]).
 
 
 get_cmds() ->
@@ -180,12 +180,12 @@ do_lists(_ThisBot, User) ->
 
 
 do_sync(UserJID) ->
-	Pid = get_consumer_pid_new(UserJID),
+	Pid = get_consumer_pid(UserJID),
 	safe_msg(UserJID, Pid, reload).
 
 
 
-get_consumer_pid_new(UserJid) ->
+get_consumer_pid(UserJid) ->
 	SJid=?TOOLS:short_jid(UserJid),
 	ProcName=erlang:list_to_atom(SJid),
 	whereis(ProcName).
@@ -198,7 +198,7 @@ safe_msg(UserJID, Pid, Msg) ->
 		Pid ! Msg,
 		ok
 	catch
-		X:Y ->
+		_X:_Y ->
 			?INFO_MSG("safe_msg: exception whilst sending to UserJID: ~p  PID: ~p", [UserJID, Pid])
 	end.
 	
@@ -261,19 +261,15 @@ iter_do_del(User, [El|Rest], Acc) ->
 	iter_do_del(User, Rest, Acc++[El]).
 
 	
-
+%% @doc String to atom
+%%
 format_busses(Busses) ->
 	fb(Busses, []).
 
 fb([], Acc) -> Acc;
-fb([H|T], Acc) when is_atom(H) ->
-	fb(T, Acc++[H]);
-
-fb([H|T], Acc) when is_list(H) ->
-	fb(T, Acc++[erlang:list_to_atom(H)]);
-
-fb([_H|T], Acc) ->
-	fb(T, Acc).
+fb([H|T], Acc) when is_atom(H) -> fb(T, Acc++[H]);
+fb([H|T], Acc) when is_list(H) -> fb(T, Acc++[erlang:list_to_atom(H)]);
+fb([_H|T], Acc) -> fb(T, Acc).
 
 
 
@@ -287,6 +283,7 @@ add_unique(List, Elements) when is_list(Elements) ->
 add_unique(List, Element) ->
 	Filtered=List--[Element],
 	Filtered++[Element].
+
 
 
 rem_unique(undefined, Elements) ->
