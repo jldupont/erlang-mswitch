@@ -38,7 +38,7 @@ handle_message(ThisBot, From, Body) ->
 	Stripped=string:strip(Body),
 	Tokens=string:tokens(Stripped, " "),
 	%?LOG(tokens, "~p~n", [Tokens]),
-	?INFO_MSG("MOD_MSWITCH: Tokens: ~p", [Tokens]),
+	%?INFO_MSG("MOD_MSWITCH: Tokens: ~p", [Tokens]),
 	dispatch_cmd(ThisBot, From, Tokens).
 
 
@@ -165,7 +165,7 @@ do_del(_ThisBot, User, List) when is_list(List) ->
 %%
 do_sel(_ThisBot, User, []) ->
 	Sel=?TOOLS:cget(selection, User),
-	{ok, "Current Selection <~p>", [Sel]};
+	{ok, "Current Selection: ~p", [Sel]};
 	
 
 do_sel(_ThisBot, User, [Sel|_]) ->
@@ -213,7 +213,7 @@ maybe_do_sel(User, _Sel, undefined) ->
 	{ok, "Changed to Selection: ~p", ["default"]};
 	
 maybe_do_sel(User, Sel, Lists) ->
-	?INFO_MSG("MAYBE_DO_SEL: Sel<~p> Lists<~p>",[Sel, Lists]),
+	%?INFO_MSG("MAYBE_DO_SEL: Sel<~p> Lists<~p>",[Sel, Lists]),
 	case lists:member(Sel, Lists) of
 		true ->
 			?TOOLS:set_selection(User, Sel),
