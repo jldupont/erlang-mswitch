@@ -72,7 +72,7 @@ process_results(Error) -> {error, Error}.
 %%	List=atom()
 get_selection(UserJid) ->
 	SJID=short_jid(UserJid),
-	?INFO_MSG("get_selection: User: ~p", [SJID]),
+	%?INFO_MSG("get_selection: User: ~p", [SJID]),
 	Ret=mnesia:transaction(
       fun () ->
 	      case mnesia:read({mod_mswitch_selection, SJID}) of
@@ -82,7 +82,7 @@ get_selection(UserJid) ->
       end),
 	case Ret of
 		{atomic, {mod_mswitch_selection, _,Result}} -> 
-			?INFO_MSG("get_selection: User: ~p  Result: ~p", [SJID, Result]),
+			%?INFO_MSG("get_selection: User: ~p  Result: ~p", [SJID, Result]),
 			Result;
 		_ -> default
 	end.
@@ -93,7 +93,7 @@ get_selection(UserJid) ->
 %%
 get_lists(UserJid) ->
 	SJID=short_jid(UserJid),
-	?INFO_MSG("get_lists: User: ~p", [SJID]),
+	%?INFO_MSG("get_lists: User: ~p", [SJID]),
 	Ret=mnesia:transaction(
       fun () ->
 	      case mnesia:read({mod_mswitch_userlists, SJID}) of
@@ -103,7 +103,7 @@ get_lists(UserJid) ->
       end),
 	case Ret of
 		{atomic, {mod_mswitch_userlists, _, Result}} ->
-			?INFO_MSG("get_lists: User: ~p  Result: ~p", [SJID, Result]),
+			%?INFO_MSG("get_lists: User: ~p  Result: ~p", [SJID, Result]),
 			Result;
 		_ -> undefined
 	end.
@@ -111,19 +111,19 @@ get_lists(UserJid) ->
 
 get_busses(UserJid, List) ->
 	SJID=short_jid(UserJid),
-	?INFO_MSG("get_busses: User: ~p  List: ~p", [SJID, List]),
+	%?INFO_MSG("get_busses: User: ~p  List: ~p", [SJID, List]),
 	Ret=mnesia:transaction(
       fun () ->
 	      case mnesia:read({mod_mswitch_userbusses, {SJID,List}}) of
 			     [Result] ->
-					 ?INFO_MSG("get_busses: list: ~p", [Result]),
+					 %?INFO_MSG("get_busses: list: ~p", [Result]),
 					 Result;
 			     [] -> undefined
 			 end
       end),
 	case Ret of
 		{atomic, {mod_mswitch_userbusses, _, Result}} -> 
-			?INFO_MSG("get_busses: User: ~p  Result: ~p", [SJID, Result]),
+			%?INFO_MSG("get_busses: User: ~p  Result: ~p", [SJID, Result]),
 			Result;
 		Other -> 
 			?INFO_MSG("get_busses: User: ~p  OTHER: ~p", [SJID, Other]),
@@ -156,11 +156,11 @@ do_cget(Var, Func, Params) ->
 	case Value of 
 		undefined ->
 			Ret=apply(?MODULE, Func, Params),
-			?INFO_MSG("do_cget: putting: Var: ~p  Value: ~p", [Var, Ret]),
+			%?INFO_MSG("do_cget: putting: Var: ~p  Value: ~p", [Var, Ret]),
 			put(Var, Ret),
 			Ret;
 		Value ->
-			?INFO_MSG("do_cget: got from cache: Var: ~p  Value: ~p", [Var, Value]),
+			%?INFO_MSG("do_cget: got from cache: Var: ~p  Value: ~p", [Var, Value]),
 			Value
 	end.
 
@@ -176,37 +176,37 @@ do_cget(Var, Func, Params) ->
 set_selection(UserJid, Selection) ->
 	SJID=short_jid(UserJid),
 	
-	?INFO_MSG("set_selection: user: ~p  selection: ~p", [SJID, Selection]),
+	%?INFO_MSG("set_selection: user: ~p  selection: ~p", [SJID, Selection]),
 	Ret=mnesia:transaction(
 		fun() ->
 		  	mnesia:write(#mod_mswitch_selection{user= SJID, selection= Selection})
 		end
 	),
-	?INFO_MSG("set_selection: Ret: ~p", [Ret]),
+	%?INFO_MSG("set_selection: Ret: ~p", [Ret]),
 	put({selection, SJID}, Selection).
 
 
 set_lists(UserJid, Lists) ->
 	SJID=short_jid(UserJid),
 	
-	?INFO_MSG("set_lists: user: ~p  lists: ~p", [SJID, Lists]),
+	%?INFO_MSG("set_lists: user: ~p  lists: ~p", [SJID, Lists]),
 	Ret=mnesia:transaction(
 		fun() ->
 		  	mnesia:write(#mod_mswitch_userlists{user= SJID, lists= Lists})
 		end
 	),
-	?INFO_MSG("set_lists: Ret: ~p", [Ret]),
+	%?INFO_MSG("set_lists: Ret: ~p", [Ret]),
 	put({lists, SJID}, Lists).
 
 set_busses(UserJid, List, Busses) ->
 	SJID=short_jid(UserJid),
-	?INFO_MSG("set_busses: user: ~p  list: ~p  busses: ~p", [SJID, List, Busses]),
+	%?INFO_MSG("set_busses: user: ~p  list: ~p  busses: ~p", [SJID, List, Busses]),
 	Ret=mnesia:transaction(
 		fun() ->
 		  	mnesia:write(#mod_mswitch_userbusses{userlist= {SJID,List}, busses=Busses})
 		end
 	),
-	?INFO_MSG("set_busses: Ret: ~p", [Ret]),
+	%?INFO_MSG("set_busses: Ret: ~p", [Ret]),
 	put({busses, SJID, List}, Busses).
 
 
