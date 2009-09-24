@@ -119,7 +119,7 @@ send_message(From, To, TypeStr, BodyStr) ->
 do_sub(_ThisBot, User, _) ->
 	SelList=?TOOLS:cget(selection, User),
 	Busses=?TOOLS:cget(busses, {User, SelList}),
-	{ok, "Busses defined <~p>", [Busses]}.
+	{ok, "Busses defined ~p", [Busses]}.
 
 
 do_add(_ThisBot, _User, []) ->
@@ -134,7 +134,7 @@ do_add(_ThisBot, User, Params) ->
 	NewBusses=add_unique(Busses, FilteredBusses),
 	?TOOLS:set_busses(User, Sel, NewBusses),
 	do_sync(User),
-	{ok, "Selection<~p> Busses<~p>", [Sel, NewBusses]}.
+	{ok, "Selection:~p Busses: ~p", [Sel, NewBusses]}.
 
 %% Removes bus/busses from the current selection
 %%
@@ -145,13 +145,13 @@ do_rem(_ThisBot, User, Params) ->
 	NewBusses=rem_unique(Busses, FilteredBusses),
 	?TOOLS:set_busses(User, Sel, NewBusses),
 	do_sync(User),
-	{ok, "Selection<~p> Busses<~p>", [Sel, NewBusses]}.
+	{ok, "Selection: ~p Busses: ~p", [Sel, NewBusses]}.
 
 %% Creates a list if not already existing
 %%
 do_create(_ThisBot, User, Lists) ->
 	DoneList=iter_do_create(User, Lists, []),
-	{ok, "Lists created <~p>", [DoneList]}.
+	{ok, "Lists created: ~p", [DoneList]}.
 
 
 do_del(_ThisBot, _User, []) ->
@@ -175,7 +175,7 @@ do_sel(_ThisBot, User, [Sel|_]) ->
 
 do_lists(_ThisBot, User) ->
 	Lists=?TOOLS:cget(lists,  User),
-	{ok, "Defined lists<~p>", [Lists]}.
+	{ok, "Defined lists: ~p", [Lists]}.
 
 
 
@@ -210,7 +210,7 @@ maybe_do_sel(User, _Sel, undefined) ->
 	?TOOLS:set_lists(User, ["default"]),
 	?TOOLS:set_selection(User, "default"),
 	do_sync(User),
-	{ok, "Changed to Selection<~p>", ["default"]};
+	{ok, "Changed to Selection: ~p", ["default"]};
 	
 maybe_do_sel(User, Sel, Lists) ->
 	?INFO_MSG("MAYBE_DO_SEL: Sel<~p> Lists<~p>",[Sel, Lists]),
@@ -218,7 +218,7 @@ maybe_do_sel(User, Sel, Lists) ->
 		true ->
 			?TOOLS:set_selection(User, Sel),
 			do_sync(User),
-			{ok, "Changed to Selection<~p>", [Sel]};
+			{ok, "Changed to Selection: ~p", [Sel]};
 		_ ->
 			{error, "List does not exist", []}
 	end.
