@@ -101,14 +101,17 @@ send_chat(From, To, IoList) ->
 
 
 send_message(From, To, TypeStr, BodyStr) ->
+	B=?TOOLS:prepare_msg(BodyStr),
     XmlBody = {xmlelement, "message",
 	       [{"type", TypeStr},
 		{"from", jlib:jid_to_string(From)},
 		{"to", jlib:jid_to_string(To)}],
 	       [{xmlelement, "body", [],
-		 [{xmlcdata, BodyStr}]}]},
+		 [{xmlcdata, B}]}]},
+	%?INFO_MSG("Delivering: From<~p> To<~p> Body<~p>~n", [From, To, BodyStr]),
     %?LOG(msg, "Delivering ~p -> ~p~n~p", [From, To, XmlBody]),
-    ejabberd_router:route(From, To, XmlBody).
+    _Ret=ejabberd_router:route(From, To, XmlBody).
+	%?INFO_MSG("send_message: Ret: ~p", [Ret]).
 
 
 %% ----------------------          ------------------------------
@@ -134,7 +137,7 @@ do_add(_ThisBot, User, Params) ->
 	NewBusses=add_unique(Busses, FilteredBusses),
 	?TOOLS:set_busses(User, Sel, NewBusses),
 	do_sync(User),
-	{ok, "Selection:~p Busses: ~p", [Sel, NewBusses]}.
+	{ok, "Selection: ~p Busses: ~p", [Sel, NewBusses]}.
 
 %% Removes bus/busses from the current selection
 %%
