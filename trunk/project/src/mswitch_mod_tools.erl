@@ -328,7 +328,7 @@ maybe_subscribe(User, _ServerPid, List, undefined) ->
 	?INFO_MSG("No busses for user: ~p selection: ~p", [User, List]);
 	
 maybe_subscribe(User, ServerPid, _List, Busses) when is_list(Busses) ->
-	?INFO_MSG("Subscribing user: ~p to busses: ~p  Pid:~p ", [User, Busses, ServerPid]),
+	%?INFO_MSG("Subscribing user: ~p to busses: ~p  Pid:~p ", [User, Busses, ServerPid]),
 	ProcName=make_consumer_name(User),
 	?MSWITCH:subscribe({?MODULE, mailbox, ProcName}, Busses);
 
@@ -339,16 +339,37 @@ maybe_subscribe(User, _ServerPid, List, Busses) ->
 
 handle_mswitch(Server, UserJID, From, Bus, Msg) ->
 	M = {From, Bus, Msg},
-	B = io_lib:format("~p", [M]),
+	B  = prepare_msg(M),
     XmlBody = {xmlelement, "message",
 	       [{"type", "chat"},
 		{"from", jlib:jid_to_string(Server)},
 		{"to", jlib:jid_to_string(UserJID)}],
 	       [{xmlelement, "body", [],
 		 [{xmlcdata, B}]}]},
-    %?LOG(msg, "Delivering ~p -> ~p~n~p", [From, To, XmlBody]),
     ejabberd_router:route(Server, UserJID, XmlBody).
+	%?INFO_MSG("handle_mswitch: Body(~p) Ret(~p)", [B, Ret]).
 
+
+
+%% @doc Prepares a message for encapsulation in xmlcdata 
+%%	
+prepare_msg(Msg) ->
+	UB = lists:flatten(io_lib:format("~p", [Msg])),
+	mcrypt(UB).
+
+	
+
+mcrypt(S) when is_list(S) ->
+    [case C of
+	 $& -> "&amp;";
+	 $< -> "&lt;";
+	 $> -> "&gt;";
+	 $" -> "&quot;";
+	 $' -> "&apos;";
+	 _ -> C
+     end || C <- S];
+mcrypt(S) when is_binary(S) ->
+    mcrypt(binary_to_list(S)).
 
 
 
